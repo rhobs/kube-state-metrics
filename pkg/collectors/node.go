@@ -17,10 +17,12 @@ limitations under the License.
 package collectors
 
 import (
+	"strings"
+
 	"k8s.io/kube-state-metrics/pkg/constant"
 	"k8s.io/kube-state-metrics/pkg/metrics"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
@@ -91,6 +93,26 @@ var (
 					LabelValues: labelValues,
 					Value:       1,
 				}}
+			}),
+		},
+		metrics.FamilyGenerator{
+			Name: "kube_node_role",
+			Type: metrics.MetricTypeGauge,
+			Help: "The role of a cluster node.",
+			GenerateFunc: wrapNodeFunc(func(n *v1.Node) metrics.Family {
+				const prefix = "node-role.kubernetes.io/"
+				ms := metrics.Family{}
+				for lbl := range n.Labels {
+					if strings.HasPrefix(lbl, prefix) {
+						ms = append(ms, &metrics.Metric{
+							Name:        "kube_node_role",
+							LabelKeys:   []string{"role"},
+							LabelValues: []string{strings.TrimPrefix(lbl, prefix)},
+							Value:       float64(1),
+						})
+					}
+				}
+				return ms
 			}),
 		},
 		metrics.FamilyGenerator{
