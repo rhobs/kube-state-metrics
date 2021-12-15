@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"strconv"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -150,6 +151,27 @@ func endpointMetricFamilies(allowAnnotationsList, allowLabelsList []string) []ge
 				}
 			}),
 		),
+		*generator.NewFamilyGenerator(
+			"kube_endpoint_ports",
+			"Information about the Endpoint ports.",
+			metric.Gauge,
+			"",
+			wrapEndpointFunc(func(e *v1.Endpoints) *metric.Family {
+				ms := []*metric.Metric{}
+				for _, s := range e.Subsets {
+					for _, port := range s.Ports {
+						ms = append(ms, &metric.Metric{
+							LabelValues: []string{port.Name, string(port.Protocol), strconv.FormatInt(int64(port.Port), 10)},
+							LabelKeys:   []string{"port_name", "port_protocol", "port_number"},
+							Value:       1,
+						})
+					}
+				}
+				return &metric.Family{
+					Metrics: ms,
+				}
+			}),
+		),
 	}
 }
 
@@ -168,12 +190,14 @@ func wrapEndpointFunc(f func(*v1.Endpoints) *metric.Family) func(interface{}) *m
 	}
 }
 
-func createEndpointsListWatch(kubeClient clientset.Interface, ns string) cache.ListerWatcher {
+func createEndpointsListWatch(kubeClient clientset.Interface, ns string, fieldSelector string) cache.ListerWatcher {
 	return &cache.ListWatch{
 		ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
+			opts.FieldSelector = fieldSelector
 			return kubeClient.CoreV1().Endpoints(ns).List(context.TODO(), opts)
 		},
 		WatchFunc: func(opts metav1.ListOptions) (watch.Interface, error) {
+			opts.FieldSelector = fieldSelector
 			return kubeClient.CoreV1().Endpoints(ns).Watch(context.TODO(), opts)
 		},
 	}

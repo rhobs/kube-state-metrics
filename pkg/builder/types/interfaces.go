@@ -34,12 +34,12 @@ import (
 type BuilderInterface interface {
 	WithMetrics(r prometheus.Registerer)
 	WithEnabledResources(c []string) error
-	WithNamespaces(n options.NamespaceList)
+	WithNamespaces(n options.NamespaceList, nsFilter string)
 	WithSharding(shard int32, totalShards int)
 	WithContext(ctx context.Context)
 	WithKubeClient(c clientset.Interface)
 	WithVPAClient(c vpaclientset.Interface)
-	WithAllowDenyList(l AllowDenyLister)
+	WithFamilyGeneratorFilter(l generator.FamilyGeneratorFilter)
 	WithAllowLabels(l map[string][]string)
 	WithGenerateStoresFunc(f BuildStoresFunc, useAPIServerCache bool)
 	DefaultGenerateStoresFunc() BuildStoresFunc
@@ -50,7 +50,7 @@ type BuilderInterface interface {
 // BuildStoresFunc function signature that is used to return a list of cache.Store
 type BuildStoresFunc func(metricFamilies []generator.FamilyGenerator,
 	expectedType interface{},
-	listWatchFunc func(kubeClient clientset.Interface, ns string) cache.ListerWatcher,
+	listWatchFunc func(kubeClient clientset.Interface, ns string, fieldSelector string) cache.ListerWatcher,
 	useAPIServerCache bool,
 ) []cache.Store
 

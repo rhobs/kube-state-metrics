@@ -42,6 +42,13 @@ func TestPodStore(t *testing.T) {
 					Namespace: "ns1",
 					UID:       "uid1",
 				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube1_spec",
+						},
+					},
+				},
 				Status: v1.PodStatus{
 					ContainerStatuses: []v1.ContainerStatus{
 						{
@@ -56,7 +63,7 @@ func TestPodStore(t *testing.T) {
 			Want: `
 			# HELP kube_pod_container_info Information about a container in a pod.
 			# TYPE kube_pod_container_info gauge
-			kube_pod_container_info{container="container1",container_id="docker://ab123",image="k8s.gcr.io/hyperkube1",image_id="docker://sha256:aaa",namespace="ns1",pod="pod1",uid="uid1"} 1`,
+			kube_pod_container_info{container="container1",container_id="docker://ab123",image="k8s.gcr.io/hyperkube1",image_spec="k8s.gcr.io/hyperkube1_spec",image_id="docker://sha256:aaa",namespace="ns1",pod="pod1",uid="uid1"} 1`,
 			MetricNames: []string{"kube_pod_container_info"},
 		},
 		{
@@ -65,6 +72,21 @@ func TestPodStore(t *testing.T) {
 					Name:      "pod2",
 					Namespace: "ns2",
 					UID:       "uid2",
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube2_spec",
+						},
+						{
+							Image: "k8s.gcr.io/hyperkube3_spec",
+						},
+					},
+					InitContainers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/initfoo_spec",
+						},
+					},
 				},
 				Status: v1.PodStatus{
 					ContainerStatuses: []v1.ContainerStatus{
@@ -96,9 +118,9 @@ func TestPodStore(t *testing.T) {
 				# HELP kube_pod_init_container_info Information about an init container in a pod.
 				# TYPE kube_pod_container_info gauge
 				# TYPE kube_pod_init_container_info gauge
-				kube_pod_container_info{container="container2",container_id="docker://cd456",image="k8s.gcr.io/hyperkube2",image_id="docker://sha256:bbb",namespace="ns2",pod="pod2",uid="uid2"} 1
-				kube_pod_container_info{container="container3",container_id="docker://ef789",image="k8s.gcr.io/hyperkube3",image_id="docker://sha256:ccc",namespace="ns2",pod="pod2",uid="uid2"} 1
-				kube_pod_init_container_info{container="initContainer",container_id="docker://ef123",image="k8s.gcr.io/initfoo",image_id="docker://sha256:wxyz",namespace="ns2",pod="pod2",uid="uid2"} 1`,
+				kube_pod_container_info{container="container2",container_id="docker://cd456",image_spec="k8s.gcr.io/hyperkube2_spec",image="k8s.gcr.io/hyperkube2",image_id="docker://sha256:bbb",namespace="ns2",pod="pod2",uid="uid2"} 1
+				kube_pod_container_info{container="container3",container_id="docker://ef789",image_spec="k8s.gcr.io/hyperkube3_spec",image="k8s.gcr.io/hyperkube3",image_id="docker://sha256:ccc",namespace="ns2",pod="pod2",uid="uid2"} 1
+				kube_pod_init_container_info{container="initContainer",container_id="docker://ef123",image_spec="k8s.gcr.io/initfoo_spec",image="k8s.gcr.io/initfoo",image_id="docker://sha256:wxyz",namespace="ns2",pod="pod2",uid="uid2"} 1`,
 			MetricNames: []string{"kube_pod_container_info", "kube_pod_init_container_info"},
 		},
 		{
@@ -107,6 +129,13 @@ func TestPodStore(t *testing.T) {
 					Name:      "pod1",
 					Namespace: "ns1",
 					UID:       "uid1",
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube1_spec",
+						},
+					},
 				},
 				Status: v1.PodStatus{
 					ContainerStatuses: []v1.ContainerStatus{
@@ -129,6 +158,16 @@ func TestPodStore(t *testing.T) {
 					Name:      "pod2",
 					Namespace: "ns2",
 					UID:       "uid2",
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube2_spec",
+						},
+						{
+							Image: "k8s.gcr.io/hyperkube3_spec",
+						},
+					},
 				},
 				Status: v1.PodStatus{
 					ContainerStatuses: []v1.ContainerStatus{
@@ -157,6 +196,24 @@ func TestPodStore(t *testing.T) {
 					Name:      "pod3",
 					Namespace: "ns3",
 					UID:       "uid3",
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube2_spec",
+						},
+						{
+							Image: "k8s.gcr.io/hyperkube3_spec",
+						},
+					},
+					InitContainers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/initfoo_spec",
+						},
+						{
+							Image: "k8s.gcr.io/initfoo_spec",
+						},
+					},
 				},
 				Status: v1.PodStatus{
 					ContainerStatuses: []v1.ContainerStatus{
@@ -196,6 +253,13 @@ func TestPodStore(t *testing.T) {
 					Namespace: "ns1",
 					UID:       "uid1",
 				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube1_spec",
+						},
+					},
+				},
 				Status: v1.PodStatus{
 					ContainerStatuses: []v1.ContainerStatus{
 						{
@@ -219,6 +283,13 @@ func TestPodStore(t *testing.T) {
 					Namespace: "ns2",
 					UID:       "uid2",
 				},
+				Spec: v1.PodSpec{
+					InitContainers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/initfoo_spec",
+						},
+					},
+				},
 				Status: v1.PodStatus{
 					InitContainerStatuses: []v1.ContainerStatus{
 						{
@@ -241,6 +312,16 @@ func TestPodStore(t *testing.T) {
 					Name:      "pod2",
 					Namespace: "ns2",
 					UID:       "uid2",
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube2_spec",
+						},
+						{
+							Image: "k8s.gcr.io/hyperkube3_spec",
+						},
+					},
 				},
 				Status: v1.PodStatus{
 					ContainerStatuses: []v1.ContainerStatus{
@@ -270,6 +351,16 @@ func TestPodStore(t *testing.T) {
 					Namespace: "ns2",
 					UID:       "uid2",
 				},
+				Spec: v1.PodSpec{
+					InitContainers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/initfoo_spec",
+						},
+						{
+							Image: "k8s.gcr.io/initfoo_spec",
+						},
+					},
+				},
 				Status: v1.PodStatus{
 					InitContainerStatuses: []v1.ContainerStatus{
 						{
@@ -297,6 +388,18 @@ func TestPodStore(t *testing.T) {
 					Name:      "pod1",
 					Namespace: "ns1",
 					UID:       "uid1",
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube2_spec",
+						},
+					},
+					InitContainers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/initfoo_spec",
+						},
+					},
 				},
 				Status: v1.PodStatus{
 					ContainerStatuses: []v1.ContainerStatus{
@@ -372,6 +475,13 @@ func TestPodStore(t *testing.T) {
 					Namespace: "ns1",
 					UID:       "uid1",
 				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube1_spec",
+						},
+					},
+				},
 				Status: v1.PodStatus{
 					ContainerStatuses: []v1.ContainerStatus{
 						{
@@ -421,6 +531,16 @@ func TestPodStore(t *testing.T) {
 					Name:      "pod2",
 					Namespace: "ns2",
 					UID:       "uid2",
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube2_spec",
+						},
+						{
+							Image: "k8s.gcr.io/hyperkube3_spec",
+						},
+					},
 				},
 				Status: v1.PodStatus{
 					ContainerStatuses: []v1.ContainerStatus{
@@ -484,6 +604,13 @@ func TestPodStore(t *testing.T) {
 					Namespace: "ns3",
 					UID:       "uid3",
 				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube4_spec",
+						},
+					},
+				},
 				Status: v1.PodStatus{
 					ContainerStatuses: []v1.ContainerStatus{
 						{
@@ -537,6 +664,13 @@ func TestPodStore(t *testing.T) {
 					Name:      "pod6",
 					Namespace: "ns6",
 					UID:       "uid6",
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube7_spec",
+						},
+					},
 				},
 				Status: v1.PodStatus{
 					ContainerStatuses: []v1.ContainerStatus{
@@ -595,6 +729,13 @@ func TestPodStore(t *testing.T) {
 					Namespace: "ns7",
 					UID:       "uid7",
 				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube7_spec",
+						},
+					},
+				},
 				Status: v1.PodStatus{
 					ContainerStatuses: []v1.ContainerStatus{
 						{
@@ -652,6 +793,13 @@ func TestPodStore(t *testing.T) {
 					Namespace: "ns4",
 					UID:       "uid4",
 				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube5_spec",
+						},
+					},
+				},
 				Status: v1.PodStatus{
 					ContainerStatuses: []v1.ContainerStatus{
 						{
@@ -696,6 +844,13 @@ func TestPodStore(t *testing.T) {
 					Namespace: "ns5",
 					UID:       "uid5",
 				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube1_spec",
+						},
+					},
+				},
 				Status: v1.PodStatus{
 					ContainerStatuses: []v1.ContainerStatus{
 						{
@@ -739,6 +894,13 @@ func TestPodStore(t *testing.T) {
 					Name:      "pod7",
 					Namespace: "ns7",
 					UID:       "uid7",
+				},
+				Spec: v1.PodSpec{
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube1_spec",
+						},
+					},
 				},
 				Status: v1.PodStatus{
 					ContainerStatuses: []v1.ContainerStatus{
@@ -790,6 +952,11 @@ func TestPodStore(t *testing.T) {
 					NodeName:          "node1",
 					PriorityClassName: "system-node-critical",
 					HostNetwork:       true,
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube2_spec",
+						},
+					},
 				},
 				Status: v1.PodStatus{
 					HostIP:    "1.1.1.1",
@@ -894,6 +1061,17 @@ func TestPodStore(t *testing.T) {
 				},
 				Spec: v1.PodSpec{
 					NodeName: "node2",
+					Containers: []v1.Container{
+						{
+							Image: "k8s.gcr.io/hyperkube2_spec",
+						},
+						{
+							Image: "k8s.gcr.io/hyperkube2_spec",
+						},
+						{
+							Image: "k8s.gcr.io/hyperkube2_spec",
+						},
+					},
 				},
 				Status: v1.PodStatus{
 					HostIP: "1.1.1.1",
@@ -1049,7 +1227,9 @@ func TestPodStore(t *testing.T) {
 				kube_pod_status_phase{namespace="ns4",phase="Succeeded",pod="pod4",uid="uid4"} 0
 				kube_pod_status_phase{namespace="ns4",phase="Unknown",pod="pod4",uid="uid4"} 0
 				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="Evicted",uid="uid4"} 0
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="NodeAffinity",uid="uid4"} 0
 				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="NodeLost",uid="uid4"} 1
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="Shutdown",uid="uid4"} 0
 				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="UnexpectedAdmissionError",uid="uid4"} 0
 `,
 			MetricNames: []string{"kube_pod_status_phase", "kube_pod_status_reason"},
@@ -1071,7 +1251,9 @@ func TestPodStore(t *testing.T) {
 				# HELP kube_pod_status_reason The pod status reasons
 				# TYPE kube_pod_status_reason gauge
 				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="Evicted",uid="uid4"} 1
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="NodeAffinity",uid="uid4"} 0
 				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="NodeLost",uid="uid4"} 0
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="Shutdown",uid="uid4"} 0
 				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="UnexpectedAdmissionError",uid="uid4"} 0
 `,
 			MetricNames: []string{"kube_pod_status_reason"},
@@ -1093,8 +1275,58 @@ func TestPodStore(t *testing.T) {
 				# HELP kube_pod_status_reason The pod status reasons
 				# TYPE kube_pod_status_reason gauge
 				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="Evicted",uid="uid4"} 0
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="NodeAffinity",uid="uid4"} 0
 				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="NodeLost",uid="uid4"} 0
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="Shutdown",uid="uid4"} 0
 				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="UnexpectedAdmissionError",uid="uid4"} 1
+`,
+			MetricNames: []string{"kube_pod_status_reason"},
+		},
+		{
+			Obj: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "pod4",
+					Namespace:         "ns4",
+					UID:               "uid4",
+					DeletionTimestamp: &metav1.Time{},
+				},
+				Status: v1.PodStatus{
+					Phase:  v1.PodRunning,
+					Reason: "NodeAffinity",
+				},
+			},
+			Want: `
+				# HELP kube_pod_status_reason The pod status reasons
+				# TYPE kube_pod_status_reason gauge
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="Evicted",uid="uid4"} 0
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="NodeAffinity",uid="uid4"} 1
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="NodeLost",uid="uid4"} 0
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="Shutdown",uid="uid4"} 0
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="UnexpectedAdmissionError",uid="uid4"} 0
+`,
+			MetricNames: []string{"kube_pod_status_reason"},
+		},
+		{
+			Obj: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "pod4",
+					Namespace:         "ns4",
+					UID:               "uid4",
+					DeletionTimestamp: &metav1.Time{},
+				},
+				Status: v1.PodStatus{
+					Phase:  v1.PodRunning,
+					Reason: "Shutdown",
+				},
+			},
+			Want: `
+				# HELP kube_pod_status_reason The pod status reasons
+				# TYPE kube_pod_status_reason gauge
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="Evicted",uid="uid4"} 0
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="NodeAffinity",uid="uid4"} 0
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="NodeLost",uid="uid4"} 0
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="Shutdown",uid="uid4"} 1
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="UnexpectedAdmissionError",uid="uid4"} 0
 `,
 			MetricNames: []string{"kube_pod_status_reason"},
 		},
@@ -1115,7 +1347,9 @@ func TestPodStore(t *testing.T) {
 				# HELP kube_pod_status_reason The pod status reasons
 				# TYPE kube_pod_status_reason gauge
 				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="Evicted",uid="uid4"} 0
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="NodeAffinity",uid="uid4"} 0
 				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="NodeLost",uid="uid4"} 0
+				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="Shutdown",uid="uid4"} 0
 				kube_pod_status_reason{namespace="ns4",pod="pod4",reason="UnexpectedAdmissionError",uid="uid4"} 0
 `,
 			MetricNames: []string{"kube_pod_status_reason"},
@@ -1319,57 +1553,41 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-		# HELP kube_pod_container_resource_limits The number of requested limit resource by a container.
-        # HELP kube_pod_container_resource_requests The number of requested request resource by a container.
-        # HELP kube_pod_init_container_resource_limits The number of requested limit resource by an init container.
-        # HELP kube_pod_init_container_resource_limits_cpu_cores The number of CPU cores requested limit by an init container.
-        # HELP kube_pod_init_container_resource_limits_ephemeral_storage_bytes Bytes of ephemeral-storage requested limit by an init container.
-        # HELP kube_pod_init_container_resource_limits_memory_bytes Bytes of memory requested limit by an init container.
-        # HELP kube_pod_init_container_resource_limits_storage_bytes Bytes of storage requested limit by an init container.
-        # HELP kube_pod_init_container_resource_requests The number of requested request resource by an init container.
-        # HELP kube_pod_init_container_resource_requests_cpu_cores The number of CPU cores requested by an init container.
-        # HELP kube_pod_init_container_resource_requests_ephemeral_storage_bytes Bytes of ephemeral-storage requested by an init container.
-        # HELP kube_pod_init_container_resource_requests_memory_bytes Bytes of memory requested by an init container.
-        # HELP kube_pod_init_container_resource_requests_storage_bytes Bytes of storage requested by an init container.
-        # HELP kube_pod_init_container_status_last_terminated_reason Describes the last reason the init container was in terminated state.
-        # TYPE kube_pod_container_resource_limits gauge
-        # TYPE kube_pod_container_resource_requests gauge
-        # TYPE kube_pod_init_container_resource_limits gauge
-        # TYPE kube_pod_init_container_resource_limits_cpu_cores gauge
-        # TYPE kube_pod_init_container_resource_limits_ephemeral_storage_bytes gauge
-        # TYPE kube_pod_init_container_resource_limits_memory_bytes gauge
-        # TYPE kube_pod_init_container_resource_limits_storage_bytes gauge
-        # TYPE kube_pod_init_container_resource_requests gauge
-        # TYPE kube_pod_init_container_resource_requests_cpu_cores gauge
-        # TYPE kube_pod_init_container_resource_requests_ephemeral_storage_bytes gauge
-        # TYPE kube_pod_init_container_resource_requests_memory_bytes gauge
-        # TYPE kube_pod_init_container_resource_requests_storage_bytes gauge
-        # TYPE kube_pod_init_container_status_last_terminated_reason gauge
-        kube_pod_container_resource_limits{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="cpu",unit="core",uid="uid1"} 0.2
-        kube_pod_container_resource_limits{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="ephemeral_storage",unit="byte",uid="uid1"} 3e+08
-        kube_pod_container_resource_limits{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="memory",unit="byte",uid="uid1"} 1e+08
-        kube_pod_container_resource_limits{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="nvidia_com_gpu",unit="integer",uid="uid1"} 1
-        kube_pod_container_resource_limits{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="storage",unit="byte",uid="uid1"} 4e+08
-        kube_pod_container_resource_limits{container="pod1_con2",namespace="ns1",node="",pod="pod1",resource="cpu",unit="core",uid="uid1"} 0.3
-        kube_pod_container_resource_limits{container="pod1_con2",namespace="ns1",node="",pod="pod1",resource="memory",unit="byte",uid="uid1"} 2e+08
-        kube_pod_container_resource_requests{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="cpu",unit="core",uid="uid1"} 0.2
-        kube_pod_container_resource_requests{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="ephemeral_storage",unit="byte",uid="uid1"} 3e+08
-        kube_pod_container_resource_requests{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="memory",unit="byte",uid="uid1"} 1e+08
-        kube_pod_container_resource_requests{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="nvidia_com_gpu",unit="integer",uid="uid1"} 1
-        kube_pod_container_resource_requests{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="storage",unit="byte",uid="uid1"} 4e+08
-        kube_pod_container_resource_requests{container="pod1_con2",namespace="ns1",node="",pod="pod1",resource="cpu",unit="core",uid="uid1"} 0.3
-        kube_pod_container_resource_requests{container="pod1_con2",namespace="ns1",node="",pod="pod1",resource="memory",unit="byte",uid="uid1"} 2e+08
-        kube_pod_init_container_resource_limits_cpu_cores{container="pod1_initcon1",namespace="ns1",pod="pod1",uid="uid1"} 0.2
-        kube_pod_init_container_resource_limits_ephemeral_storage_bytes{container="pod1_initcon1",namespace="ns1",pod="pod1",uid="uid1"} 3e+08
-        kube_pod_init_container_resource_limits_memory_bytes{container="pod1_initcon1",namespace="ns1",pod="pod1",uid="uid1"} 1e+08
-        kube_pod_init_container_resource_limits_storage_bytes{container="pod1_initcon1",namespace="ns1",pod="pod1",uid="uid1"} 4e+08
-        kube_pod_init_container_resource_limits{container="pod1_initcon1",namespace="ns1",pod="pod1",resource="nvidia_com_gpu",unit="integer",uid="uid1"} 1
-        kube_pod_init_container_resource_requests_cpu_cores{container="pod1_initcon1",namespace="ns1",pod="pod1",uid="uid1"} 0.2
-        kube_pod_init_container_resource_requests_ephemeral_storage_bytes{container="pod1_initcon1",namespace="ns1",pod="pod1",uid="uid1"} 3e+08
-        kube_pod_init_container_resource_requests_memory_bytes{container="pod1_initcon1",namespace="ns1",pod="pod1",uid="uid1"} 1e+08
-        kube_pod_init_container_resource_requests_storage_bytes{container="pod1_initcon1",namespace="ns1",pod="pod1",uid="uid1"} 4e+08
-        kube_pod_init_container_resource_requests{container="pod1_initcon1",namespace="ns1",pod="pod1",resource="nvidia_com_gpu",unit="integer",uid="uid1"} 1
-		`,
+				# HELP kube_pod_container_resource_limits The number of requested limit resource by a container.
+				# HELP kube_pod_container_resource_requests The number of requested request resource by a container.
+				# HELP kube_pod_init_container_resource_limits The number of requested limit resource by an init container.
+				# HELP kube_pod_init_container_resource_requests The number of requested request resource by an init container.
+				# HELP kube_pod_init_container_status_last_terminated_reason Describes the last reason the init container was in terminated state.
+				# TYPE kube_pod_container_resource_limits gauge
+				# TYPE kube_pod_container_resource_requests gauge
+				# TYPE kube_pod_init_container_resource_limits gauge
+				# TYPE kube_pod_init_container_resource_requests gauge
+				# TYPE kube_pod_init_container_status_last_terminated_reason gauge
+				kube_pod_container_resource_limits{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="cpu",unit="core",uid="uid1"} 0.2
+				kube_pod_container_resource_limits{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="ephemeral_storage",unit="byte",uid="uid1"} 3e+08
+				kube_pod_container_resource_limits{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="memory",unit="byte",uid="uid1"} 1e+08
+				kube_pod_container_resource_limits{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="nvidia_com_gpu",unit="integer",uid="uid1"} 1
+				kube_pod_container_resource_limits{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="storage",unit="byte",uid="uid1"} 4e+08
+				kube_pod_container_resource_limits{container="pod1_con2",namespace="ns1",node="",pod="pod1",resource="cpu",unit="core",uid="uid1"} 0.3
+				kube_pod_container_resource_limits{container="pod1_con2",namespace="ns1",node="",pod="pod1",resource="memory",unit="byte",uid="uid1"} 2e+08
+				kube_pod_container_resource_requests{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="cpu",unit="core",uid="uid1"} 0.2
+				kube_pod_container_resource_requests{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="ephemeral_storage",unit="byte",uid="uid1"} 3e+08
+				kube_pod_container_resource_requests{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="memory",unit="byte",uid="uid1"} 1e+08
+				kube_pod_container_resource_requests{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="nvidia_com_gpu",unit="integer",uid="uid1"} 1
+				kube_pod_container_resource_requests{container="pod1_con1",namespace="ns1",node="",pod="pod1",resource="storage",unit="byte",uid="uid1"} 4e+08
+				kube_pod_container_resource_requests{container="pod1_con2",namespace="ns1",node="",pod="pod1",resource="cpu",unit="core",uid="uid1"} 0.3
+				kube_pod_container_resource_requests{container="pod1_con2",namespace="ns1",node="",pod="pod1",resource="memory",unit="byte",uid="uid1"} 2e+08
+				kube_pod_init_container_resource_limits{container="pod1_initcon1",namespace="ns1",node="",pod="pod1",resource="cpu",unit="core",uid="uid1"} 0.2
+				kube_pod_init_container_resource_limits{container="pod1_initcon1",namespace="ns1",node="",pod="pod1",resource="ephemeral_storage",unit="byte",uid="uid1"} 3e+08
+				kube_pod_init_container_resource_limits{container="pod1_initcon1",namespace="ns1",node="",pod="pod1",resource="memory",unit="byte",uid="uid1"} 1e+08
+				kube_pod_init_container_resource_limits{container="pod1_initcon1",namespace="ns1",node="",pod="pod1",resource="nvidia_com_gpu",unit="integer",uid="uid1"} 1
+				kube_pod_init_container_resource_limits{container="pod1_initcon1",namespace="ns1",node="",pod="pod1",resource="storage",unit="byte",uid="uid1"} 4e+08
+				kube_pod_init_container_resource_requests{container="pod1_initcon1",namespace="ns1",node="",pod="pod1",resource="cpu",unit="core",uid="uid1"} 0.2
+				kube_pod_init_container_resource_requests{container="pod1_initcon1",namespace="ns1",node="",pod="pod1",resource="ephemeral_storage",unit="byte",uid="uid1"} 3e+08
+				kube_pod_init_container_resource_requests{container="pod1_initcon1",namespace="ns1",node="",pod="pod1",resource="memory",unit="byte",uid="uid1"} 1e+08
+				kube_pod_init_container_resource_requests{container="pod1_initcon1",namespace="ns1",node="",pod="pod1",resource="nvidia_com_gpu",unit="integer",uid="uid1"} 1
+				kube_pod_init_container_resource_requests{container="pod1_initcon1",namespace="ns1",node="",pod="pod1",resource="storage",unit="byte",uid="uid1"} 4e+08
+			`,
 			MetricNames: []string{
 				"kube_pod_container_resource_requests",
 				"kube_pod_container_resource_limits",
@@ -1437,16 +1655,18 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-		# HELP kube_pod_init_container_resource_limits_cpu_cores The number of CPU cores requested limit by an init container.
-        # HELP kube_pod_init_container_resource_limits_memory_bytes Bytes of memory requested limit by an init container.
-        # TYPE kube_pod_init_container_resource_limits_cpu_cores gauge
-        # TYPE kube_pod_init_container_resource_limits_memory_bytes gauge
-        kube_pod_init_container_resource_limits_cpu_cores{container="pod2_initcon1",namespace="ns2",pod="pod2",uid="uid2"} 0.4
-        kube_pod_init_container_resource_limits_memory_bytes{container="pod2_initcon1",namespace="ns2",pod="pod2",uid="uid2"} 3e+08
-		`,
+				# HELP kube_pod_init_container_resource_limits The number of requested limit resource by an init container.
+				# HELP kube_pod_init_container_resource_requests The number of requested request resource by an init container.
+				# TYPE kube_pod_init_container_resource_limits gauge
+				# TYPE kube_pod_init_container_resource_requests gauge
+				kube_pod_init_container_resource_limits{container="pod2_initcon1",namespace="ns2",node="",pod="pod2",resource="cpu",uid="uid2",unit="core"} 0.4
+				kube_pod_init_container_resource_limits{container="pod2_initcon1",namespace="ns2",node="",pod="pod2",resource="memory",uid="uid2",unit="byte"} 3e+08
+				kube_pod_init_container_resource_requests{container="pod2_initcon1",namespace="ns2",node="",pod="pod2",resource="cpu",uid="uid2",unit="core"} 0.4
+				kube_pod_init_container_resource_requests{container="pod2_initcon1",namespace="ns2",node="",pod="pod2",resource="memory",uid="uid2",unit="byte"} 3e+08
+			`,
 			MetricNames: []string{
-				"kube_pod_init_container_resource_limits_cpu_cores",
-				"kube_pod_init_container_resource_limits_memory_bytes",
+				"kube_pod_init_container_resource_limits",
+				"kube_pod_init_container_resource_requests",
 			},
 		},
 		{
@@ -1638,6 +1858,19 @@ func BenchmarkPodStore(b *testing.B) {
 			Namespace: "ns1",
 			UID:       "uid1",
 		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{
+					Image: "k8s.gcr.io/hyperkube1_spec",
+				},
+				{
+					Image: "k8s.gcr.io/hyperkube1_spec",
+				},
+				{
+					Image: "k8s.gcr.io/hyperkube1_spec",
+				},
+			},
+		},
 		Status: v1.PodStatus{
 			ContainerStatuses: []v1.ContainerStatus{
 				{
@@ -1692,7 +1925,7 @@ func BenchmarkPodStore(b *testing.B) {
 		},
 	}
 
-	expectedFamilies := 51
+	expectedFamilies := 43
 	for n := 0; n < b.N; n++ {
 		families := f(pod)
 		if len(families) != expectedFamilies {

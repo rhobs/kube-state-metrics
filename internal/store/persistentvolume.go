@@ -33,7 +33,7 @@ import (
 
 var (
 	descPersistentVolumeClaimRefName          = "kube_persistentvolume_claim_ref"
-	descPersistentVolumeClaimRefHelp          = "Information about the Persitant Volume Claim Reference."
+	descPersistentVolumeClaimRefHelp          = "Information about the Persistent Volume Claim Reference."
 	descPersistentVolumeClaimRefDefaultLabels = []string{"persistentvolume"}
 
 	descPersistentVolumeAnnotationsName     = "kube_persistentvolume_annotations"
@@ -274,7 +274,7 @@ func wrapPersistentVolumeFunc(f func(*v1.PersistentVolume) *metric.Family) func(
 	}
 }
 
-func createPersistentVolumeListWatch(kubeClient clientset.Interface, ns string) cache.ListerWatcher {
+func createPersistentVolumeListWatch(kubeClient clientset.Interface, ns string, fieldSelector string) cache.ListerWatcher {
 	return &cache.ListWatch{
 		ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
 			return kubeClient.CoreV1().PersistentVolumes().List(context.TODO(), opts)

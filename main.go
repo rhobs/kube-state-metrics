@@ -42,7 +42,9 @@ import (
 
 	"k8s.io/kube-state-metrics/v2/internal/store"
 	"k8s.io/kube-state-metrics/v2/pkg/allowdenylist"
+	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
 	"k8s.io/kube-state-metrics/v2/pkg/metricshandler"
+	"k8s.io/kube-state-metrics/v2/pkg/optin"
 	"k8s.io/kube-state-metrics/v2/pkg/options"
 	"k8s.io/kube-state-metrics/v2/pkg/util/proc"
 )
@@ -114,17 +116,9 @@ func main() {
 		klog.Fatalf("Failed to set up resources: %v", err)
 	}
 
-	if len(opts.Namespaces) == 0 {
-		klog.Info("Using all namespace")
-		storeBuilder.WithNamespaces(options.DefaultNamespaces)
-	} else {
-		if opts.Namespaces.IsAllNamespaces() {
-			klog.Info("Using all namespace")
-		} else {
-			klog.Infof("Using %s namespaces", opts.Namespaces)
-		}
-		storeBuilder.WithNamespaces(opts.Namespaces)
-	}
+	namespaces := opts.Namespaces.GetNamespaces()
+	nsFieldSelector := namespaces.GetExcludeNSFieldSelector(opts.NamespacesDenylist)
+	storeBuilder.WithNamespaces(namespaces, nsFieldSelector)
 
 	allowDenyList, err := allowdenylist.New(opts.MetricAllowlist, opts.MetricDenylist)
 	if err != nil {
@@ -138,7 +132,19 @@ func main() {
 
 	klog.Infof("metric allow-denylisting: %v", allowDenyList.Status())
 
-	storeBuilder.WithAllowDenyList(allowDenyList)
+	optInMetricFamilyFilter, err := optin.NewMetricFamilyFilter(opts.MetricOptInList)
+	if err != nil {
+		klog.Fatalf("error initializing the opt-in metric list : %v", err)
+	}
+
+	if optInMetricFamilyFilter.Count() > 0 {
+		klog.Infof("metrics which were opted into: %v", optInMetricFamilyFilter.Status())
+	}
+
+	storeBuilder.WithFamilyGeneratorFilter(generator.NewCompositeFamilyGeneratorFilter(
+		allowDenyList,
+		optInMetricFamilyFilter,
+	))
 
 	storeBuilder.WithGenerateStoresFunc(storeBuilder.DefaultGenerateStoresFunc(), opts.UseAPIServerCache)
 
