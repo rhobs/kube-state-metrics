@@ -31,6 +31,7 @@ type FamilyGenerator struct {
 	Name              string
 	Help              string
 	Type              metric.Type
+	OptIn             bool
 	DeprecatedVersion string
 	GenerateFunc      func(obj interface{}) *metric.Family
 }
@@ -41,12 +42,20 @@ func NewFamilyGenerator(name string, help string, metricType metric.Type, deprec
 		Name:              name,
 		Type:              metricType,
 		Help:              help,
+		OptIn:             false,
 		DeprecatedVersion: deprecatedVersion,
 		GenerateFunc:      generateFunc,
 	}
 	if deprecatedVersion != "" {
 		f.Help = fmt.Sprintf("(Deprecated since %s) %s", deprecatedVersion, help)
 	}
+	return f
+}
+
+// NewOptInFamilyGenerator creates new FamilyGenerator instances for opt-in metric families.
+func NewOptInFamilyGenerator(name string, help string, metricType metric.Type, deprecatedVersion string, generateFunc func(obj interface{}) *metric.Family) *FamilyGenerator {
+	f := NewFamilyGenerator(name, help, metricType, deprecatedVersion, generateFunc)
+	f.OptIn = true
 	return f
 }
 
@@ -100,23 +109,4 @@ func ComposeMetricGenFuncs(familyGens []FamilyGenerator) func(obj interface{}) [
 
 		return families
 	}
-}
-
-type allowDenyLister interface {
-	IsIncluded(string) bool
-	IsExcluded(string) bool
-}
-
-// FilterMetricFamilies takes a allow- and a denylist and a slice of metric
-// families and returns a filtered slice.
-func FilterMetricFamilies(l allowDenyLister, families []FamilyGenerator) []FamilyGenerator {
-	filtered := []FamilyGenerator{}
-
-	for _, f := range families {
-		if l.IsIncluded(f.Name) {
-			filtered = append(filtered, f)
-		}
-	}
-
-	return filtered
 }

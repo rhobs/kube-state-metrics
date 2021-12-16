@@ -28,6 +28,8 @@ import (
 	"testing"
 	"time"
 
+	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
+
 	"github.com/prometheus/client_golang/prometheus"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -66,14 +68,17 @@ func BenchmarkKubeStateMetrics(b *testing.B) {
 	builder.WithKubeClient(kubeClient)
 	builder.WithSharding(0, 1)
 	builder.WithContext(ctx)
-	builder.WithNamespaces(options.DefaultNamespaces)
+	builder.WithNamespaces(options.DefaultNamespaces, "")
 	builder.WithGenerateStoresFunc(builder.DefaultGenerateStoresFunc(), false)
 
-	l, err := allowdenylist.New(map[string]struct{}{}, map[string]struct{}{})
+	allowDenyListFilter, err := allowdenylist.New(map[string]struct{}{}, map[string]struct{}{})
 	if err != nil {
 		b.Fatal(err)
 	}
-	builder.WithAllowDenyList(l)
+
+	builder.WithFamilyGeneratorFilter(generator.NewCompositeFamilyGeneratorFilter(
+		allowDenyListFilter,
+	))
 
 	builder.WithAllowAnnotations(map[string][]string{})
 	builder.WithAllowLabels(map[string][]string{})
@@ -132,14 +137,14 @@ func TestFullScrapeCycle(t *testing.T) {
 	builder.WithMetrics(reg)
 	builder.WithEnabledResources(options.DefaultResources.AsSlice())
 	builder.WithKubeClient(kubeClient)
-	builder.WithNamespaces(options.DefaultNamespaces)
+	builder.WithNamespaces(options.DefaultNamespaces, "")
 	builder.WithGenerateStoresFunc(builder.DefaultGenerateStoresFunc(), false)
 
 	l, err := allowdenylist.New(map[string]struct{}{}, map[string]struct{}{})
 	if err != nil {
 		t.Fatal(err)
 	}
-	builder.WithAllowDenyList(l)
+	builder.WithFamilyGeneratorFilter(l)
 	builder.WithAllowLabels(map[string][]string{
 		"kube_pod_labels": {
 			"namespace",
@@ -185,15 +190,7 @@ func TestFullScrapeCycle(t *testing.T) {
 # HELP kube_pod_info Information about pod.
 # HELP kube_pod_init_container_info Information about an init container in a pod.
 # HELP kube_pod_init_container_resource_limits The number of requested limit resource by an init container.
-# HELP kube_pod_init_container_resource_limits_cpu_cores The number of CPU cores requested limit by an init container.
-# HELP kube_pod_init_container_resource_limits_ephemeral_storage_bytes Bytes of ephemeral-storage requested limit by an init container.
-# HELP kube_pod_init_container_resource_limits_memory_bytes Bytes of memory requested limit by an init container.
-# HELP kube_pod_init_container_resource_limits_storage_bytes Bytes of storage requested limit by an init container.
 # HELP kube_pod_init_container_resource_requests The number of requested request resource by an init container.
-# HELP kube_pod_init_container_resource_requests_cpu_cores The number of CPU cores requested by an init container.
-# HELP kube_pod_init_container_resource_requests_ephemeral_storage_bytes Bytes of ephemeral-storage requested by an init container.
-# HELP kube_pod_init_container_resource_requests_memory_bytes Bytes of memory requested by an init container.
-# HELP kube_pod_init_container_resource_requests_storage_bytes Bytes of storage requested by an init container.
 # HELP kube_pod_init_container_status_last_terminated_reason Describes the last reason the init container was in terminated state.
 # HELP kube_pod_init_container_status_ready Describes whether the init containers readiness check succeeded.
 # HELP kube_pod_init_container_status_restarts_total The number of restarts for the init container.
@@ -236,15 +233,7 @@ func TestFullScrapeCycle(t *testing.T) {
 # TYPE kube_pod_info gauge
 # TYPE kube_pod_init_container_info gauge
 # TYPE kube_pod_init_container_resource_limits gauge
-# TYPE kube_pod_init_container_resource_limits_cpu_cores gauge
-# TYPE kube_pod_init_container_resource_limits_ephemeral_storage_bytes gauge
-# TYPE kube_pod_init_container_resource_limits_memory_bytes gauge
-# TYPE kube_pod_init_container_resource_limits_storage_bytes gauge
 # TYPE kube_pod_init_container_resource_requests gauge
-# TYPE kube_pod_init_container_resource_requests_cpu_cores gauge
-# TYPE kube_pod_init_container_resource_requests_ephemeral_storage_bytes gauge
-# TYPE kube_pod_init_container_resource_requests_memory_bytes gauge
-# TYPE kube_pod_init_container_resource_requests_storage_bytes gauge
 # TYPE kube_pod_init_container_status_last_terminated_reason gauge
 # TYPE kube_pod_init_container_status_ready gauge
 # TYPE kube_pod_init_container_status_restarts_total counter
@@ -269,8 +258,8 @@ func TestFullScrapeCycle(t *testing.T) {
 # TYPE kube_pod_status_scheduled_time gauge
 # TYPE kube_pod_status_unschedulable gauge
 kube_pod_annotations{namespace="default",pod="pod0",uid="abc-0"} 1
-kube_pod_container_info{namespace="default",pod="pod0",uid="abc-0",container="container2",image="k8s.gcr.io/hyperkube2",image_id="docker://sha256:bbb",container_id="docker://cd456"} 1
-kube_pod_container_info{namespace="default",pod="pod0",uid="abc-0",container="container3",image="k8s.gcr.io/hyperkube3",image_id="docker://sha256:ccc",container_id="docker://ef789"} 1
+kube_pod_container_info{namespace="default",pod="pod0",uid="abc-0",container="container2",image_spec="k8s.gcr.io/hyperkube2_spec",image="k8s.gcr.io/hyperkube2",image_id="docker://sha256:bbb",container_id="docker://cd456"} 1
+kube_pod_container_info{namespace="default",pod="pod0",uid="abc-0",container="container3",image_spec="k8s.gcr.io/hyperkube3_spec",image="k8s.gcr.io/hyperkube3",image_id="docker://sha256:ccc",container_id="docker://ef789"} 1
 kube_pod_container_resource_limits{namespace="default",pod="pod0",uid="abc-0",container="pod1_con1",node="node1",resource="cpu",unit="core"} 0.2
 kube_pod_container_resource_limits{namespace="default",pod="pod0",uid="abc-0",container="pod1_con1",node="node1",resource="ephemeral_storage",unit="byte"} 3e+08
 kube_pod_container_resource_limits{namespace="default",pod="pod0",uid="abc-0",container="pod1_con1",node="node1",resource="memory",unit="byte"} 1e+08
@@ -308,7 +297,9 @@ kube_pod_status_phase{namespace="default",pod="pod0",uid="abc-0",phase="Running"
 kube_pod_status_phase{namespace="default",pod="pod0",uid="abc-0",phase="Succeeded"} 0
 kube_pod_status_phase{namespace="default",pod="pod0",uid="abc-0",phase="Unknown"} 0
 kube_pod_status_reason{namespace="default",pod="pod0",uid="abc-0",reason="Evicted"} 0
+kube_pod_status_reason{namespace="default",pod="pod0",uid="abc-0",reason="NodeAffinity"} 0
 kube_pod_status_reason{namespace="default",pod="pod0",uid="abc-0",reason="NodeLost"} 0
+kube_pod_status_reason{namespace="default",pod="pod0",uid="abc-0",reason="Shutdown"} 0
 kube_pod_status_reason{namespace="default",pod="pod0",uid="abc-0",reason="UnexpectedAdmissionError"} 0
 `
 
@@ -413,8 +404,8 @@ func TestShardingEquivalenceScrapeCycle(t *testing.T) {
 	unshardedBuilder.WithMetrics(reg)
 	unshardedBuilder.WithEnabledResources(options.DefaultResources.AsSlice())
 	unshardedBuilder.WithKubeClient(kubeClient)
-	unshardedBuilder.WithNamespaces(options.DefaultNamespaces)
-	unshardedBuilder.WithAllowDenyList(l)
+	unshardedBuilder.WithNamespaces(options.DefaultNamespaces, "")
+	unshardedBuilder.WithFamilyGeneratorFilter(l)
 	unshardedBuilder.WithAllowLabels(map[string][]string{})
 	unshardedBuilder.WithGenerateStoresFunc(unshardedBuilder.DefaultGenerateStoresFunc(), false)
 
@@ -426,8 +417,8 @@ func TestShardingEquivalenceScrapeCycle(t *testing.T) {
 	shardedBuilder1.WithMetrics(regShard1)
 	shardedBuilder1.WithEnabledResources(options.DefaultResources.AsSlice())
 	shardedBuilder1.WithKubeClient(kubeClient)
-	shardedBuilder1.WithNamespaces(options.DefaultNamespaces)
-	shardedBuilder1.WithAllowDenyList(l)
+	shardedBuilder1.WithNamespaces(options.DefaultNamespaces, "")
+	shardedBuilder1.WithFamilyGeneratorFilter(l)
 	shardedBuilder1.WithAllowLabels(map[string][]string{})
 	shardedBuilder1.WithGenerateStoresFunc(shardedBuilder1.DefaultGenerateStoresFunc(), false)
 
@@ -439,8 +430,8 @@ func TestShardingEquivalenceScrapeCycle(t *testing.T) {
 	shardedBuilder2.WithMetrics(regShard2)
 	shardedBuilder2.WithEnabledResources(options.DefaultResources.AsSlice())
 	shardedBuilder2.WithKubeClient(kubeClient)
-	shardedBuilder2.WithNamespaces(options.DefaultNamespaces)
-	shardedBuilder2.WithAllowDenyList(l)
+	shardedBuilder2.WithNamespaces(options.DefaultNamespaces, "")
+	shardedBuilder2.WithFamilyGeneratorFilter(l)
 	shardedBuilder2.WithAllowLabels(map[string][]string{})
 	shardedBuilder2.WithGenerateStoresFunc(shardedBuilder2.DefaultGenerateStoresFunc(), false)
 
@@ -613,7 +604,8 @@ func pod(client *fake.Clientset, index int) error {
 			NodeName:      "node1",
 			Containers: []v1.Container{
 				{
-					Name: "pod1_con1",
+					Image: "k8s.gcr.io/hyperkube2_spec",
+					Name:  "pod1_con1",
 					Resources: v1.ResourceRequirements{
 						Requests: map[v1.ResourceName]resource.Quantity{
 							v1.ResourceCPU:                    resource.MustParse("200m"),
@@ -632,7 +624,8 @@ func pod(client *fake.Clientset, index int) error {
 					},
 				},
 				{
-					Name: "pod1_con2",
+					Image: "k8s.gcr.io/hyperkube3_spec",
+					Name:  "pod1_con2",
 					Resources: v1.ResourceRequirements{
 						Requests: map[v1.ResourceName]resource.Quantity{
 							v1.ResourceCPU:    resource.MustParse("300m"),

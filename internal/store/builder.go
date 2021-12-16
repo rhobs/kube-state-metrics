@@ -27,7 +27,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
-	autoscaling "k8s.io/api/autoscaling/v2beta1"
+	autoscaling "k8s.io/api/autoscaling/v2beta2"
 	batchv1 "k8s.io/api/batch/v1"
 	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	certv1 "k8s.io/api/certificates/v1"
@@ -57,20 +57,21 @@ var _ ksmtypes.BuilderInterface = &Builder{}
 // Builder helps to build store. It follows the builder pattern
 // (https://en.wikipedia.org/wiki/Builder_pattern).
 type Builder struct {
-	kubeClient           clientset.Interface
-	vpaClient            vpaclientset.Interface
-	namespaces           options.NamespaceList
-	ctx                  context.Context
-	enabledResources     []string
-	allowDenyList        ksmtypes.AllowDenyLister
-	listWatchMetrics     *watch.ListWatchMetrics
-	shardingMetrics      *sharding.Metrics
-	shard                int32
-	totalShards          int
-	buildStoresFunc      ksmtypes.BuildStoresFunc
-	allowAnnotationsList map[string][]string
-	allowLabelsList      map[string][]string
-	useAPIServerCache    bool
+	kubeClient            clientset.Interface
+	vpaClient             vpaclientset.Interface
+	namespaces            options.NamespaceList
+	namespaceFilter       string
+	ctx                   context.Context
+	enabledResources      []string
+	familyGeneratorFilter generator.FamilyGeneratorFilter
+	listWatchMetrics      *watch.ListWatchMetrics
+	shardingMetrics       *sharding.Metrics
+	shard                 int32
+	totalShards           int
+	buildStoresFunc       ksmtypes.BuildStoresFunc
+	allowAnnotationsList  map[string][]string
+	allowLabelsList       map[string][]string
+	useAPIServerCache     bool
 }
 
 // NewBuilder returns a new builder.
@@ -103,8 +104,9 @@ func (b *Builder) WithEnabledResources(r []string) error {
 }
 
 // WithNamespaces sets the namespaces property of a Builder.
-func (b *Builder) WithNamespaces(n options.NamespaceList) {
+func (b *Builder) WithNamespaces(n options.NamespaceList, nsFilter string) {
 	b.namespaces = n
+	b.namespaceFilter = nsFilter
 }
 
 // WithSharding sets the shard and totalShards property of a Builder.
@@ -132,10 +134,10 @@ func (b *Builder) WithVPAClient(c vpaclientset.Interface) {
 	b.vpaClient = c
 }
 
-// WithAllowDenyList configures the allow or denylisted metric to be exposed
-// by the store build by the Builder.
-func (b *Builder) WithAllowDenyList(l ksmtypes.AllowDenyLister) {
-	b.allowDenyList = l
+// WithFamilyGeneratorFilter configures the family generator filter which decides which
+// metrics are to be exposed by the store build by the Builder.
+func (b *Builder) WithFamilyGeneratorFilter(l generator.FamilyGeneratorFilter) {
+	b.familyGeneratorFilter = l
 }
 
 // WithGenerateStoresFunc configures a custom generate store function
@@ -167,8 +169,8 @@ func (b *Builder) WithAllowLabels(labels map[string][]string) {
 // It returns metrics writers which can be used to write out
 // metrics from the stores.
 func (b *Builder) Build() []metricsstore.MetricsWriter {
-	if b.allowDenyList == nil {
-		panic("allowDenyList should not be nil")
+	if b.familyGeneratorFilter == nil {
+		panic("familyGeneratorFilter should not be nil")
 	}
 
 	var metricsWriters []metricsstore.MetricsWriter
@@ -196,8 +198,8 @@ func (b *Builder) Build() []metricsstore.MetricsWriter {
 // It returns metric stores which can be used to consume
 // the generated metrics from the stores.
 func (b *Builder) BuildStores() [][]cache.Store {
-	if b.allowDenyList == nil {
-		panic("allowDenyList should not be nil")
+	if b.familyGeneratorFilter == nil {
+		panic("familyGeneratorFilter should not be nil")
 	}
 
 	var allStores [][]cache.Store
@@ -263,7 +265,7 @@ func availableResources() []string {
 }
 
 func (b *Builder) buildConfigMapStores() []cache.Store {
-	return b.buildStoresFunc(configMapMetricFamilies, &v1.ConfigMap{}, createConfigMapListWatch, b.useAPIServerCache)
+	return b.buildStoresFunc(configMapMetricFamilies(b.allowAnnotationsList["configmaps"], b.allowLabelsList["configmaps"]), &v1.ConfigMap{}, createConfigMapListWatch, b.useAPIServerCache)
 }
 
 func (b *Builder) buildCronJobStores() []cache.Store {
@@ -323,7 +325,7 @@ func (b *Builder) buildPersistentVolumeStores() []cache.Store {
 }
 
 func (b *Builder) buildPodDisruptionBudgetStores() []cache.Store {
-	return b.buildStoresFunc(podDisruptionBudgetMetricFamilies, &policy.PodDisruptionBudget{}, createPodDisruptionBudgetListWatch, b.useAPIServerCache)
+	return b.buildStoresFunc(podDisruptionBudgetMetricFamilies(b.allowAnnotationsList["poddisruptionbudget"], b.allowLabelsList["poddisruptionbudget"]), &policy.PodDisruptionBudget{}, createPodDisruptionBudgetListWatch, b.useAPIServerCache)
 }
 
 func (b *Builder) buildReplicaSetStores() []cache.Store {
@@ -381,19 +383,19 @@ func (b *Builder) buildLeasesStores() []cache.Store {
 func (b *Builder) buildStores(
 	metricFamilies []generator.FamilyGenerator,
 	expectedType interface{},
-	listWatchFunc func(kubeClient clientset.Interface, ns string) cache.ListerWatcher,
+	listWatchFunc func(kubeClient clientset.Interface, ns string, fieldSelector string) cache.ListerWatcher,
 	useAPIServerCache bool,
 ) []cache.Store {
-	metricFamilies = generator.FilterMetricFamilies(b.allowDenyList, metricFamilies)
+	metricFamilies = generator.FilterFamilyGenerators(b.familyGeneratorFilter, metricFamilies)
 	composedMetricGenFuncs := generator.ComposeMetricGenFuncs(metricFamilies)
 	familyHeaders := generator.ExtractMetricFamilyHeaders(metricFamilies)
 
-	if isAllNamespaces(b.namespaces) {
+	if b.namespaces.IsAllNamespaces() {
 		store := metricsstore.NewMetricsStore(
 			familyHeaders,
 			composedMetricGenFuncs,
 		)
-		listWatcher := listWatchFunc(b.kubeClient, v1.NamespaceAll)
+		listWatcher := listWatchFunc(b.kubeClient, v1.NamespaceAll, b.namespaceFilter)
 		b.startReflector(expectedType, store, listWatcher, useAPIServerCache)
 		return []cache.Store{store}
 	}
@@ -404,7 +406,7 @@ func (b *Builder) buildStores(
 			familyHeaders,
 			composedMetricGenFuncs,
 		)
-		listWatcher := listWatchFunc(b.kubeClient, ns)
+		listWatcher := listWatchFunc(b.kubeClient, ns, b.namespaceFilter)
 		b.startReflector(expectedType, store, listWatcher, useAPIServerCache)
 		stores = append(stores, store)
 	}
@@ -423,12 +425,6 @@ func (b *Builder) startReflector(
 	instrumentedListWatch := watch.NewInstrumentedListerWatcher(listWatcher, b.listWatchMetrics, reflect.TypeOf(expectedType).String(), useAPIServerCache)
 	reflector := cache.NewReflector(sharding.NewShardedListWatch(b.shard, b.totalShards, instrumentedListWatch), expectedType, store, 0)
 	go reflector.Run(b.ctx.Done())
-}
-
-// isAllNamespaces checks if the given slice of namespaces
-// contains only v1.NamespaceAll.
-func isAllNamespaces(namespaces []string) bool {
-	return len(namespaces) == 1 && namespaces[0] == v1.NamespaceAll
 }
 
 // cacheStoresToMetricStores converts []cache.Store into []*metricsstore.MetricsStore
