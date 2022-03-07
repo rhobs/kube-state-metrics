@@ -29,12 +29,11 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	autoscaling "k8s.io/api/autoscaling/v2beta2"
 	batchv1 "k8s.io/api/batch/v1"
-	batchv1beta1 "k8s.io/api/batch/v1beta1"
 	certv1 "k8s.io/api/certificates/v1"
 	coordinationv1 "k8s.io/api/coordination/v1"
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
-	policy "k8s.io/api/policy/v1beta1"
+	policyv1 "k8s.io/api/policy/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	vpaautoscaling "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1beta2"
 	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
@@ -43,6 +42,7 @@ import (
 	"k8s.io/klog/v2"
 
 	ksmtypes "k8s.io/kube-state-metrics/v2/pkg/builder/types"
+	"k8s.io/kube-state-metrics/v2/pkg/customresource"
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
 	metricsstore "k8s.io/kube-state-metrics/v2/pkg/metrics_store"
 	"k8s.io/kube-state-metrics/v2/pkg/options"
@@ -57,21 +57,23 @@ var _ ksmtypes.BuilderInterface = &Builder{}
 // Builder helps to build store. It follows the builder pattern
 // (https://en.wikipedia.org/wiki/Builder_pattern).
 type Builder struct {
-	kubeClient            clientset.Interface
-	vpaClient             vpaclientset.Interface
-	namespaces            options.NamespaceList
-	namespaceFilter       string
-	ctx                   context.Context
-	enabledResources      []string
-	familyGeneratorFilter generator.FamilyGeneratorFilter
-	listWatchMetrics      *watch.ListWatchMetrics
-	shardingMetrics       *sharding.Metrics
-	shard                 int32
-	totalShards           int
-	buildStoresFunc       ksmtypes.BuildStoresFunc
-	allowAnnotationsList  map[string][]string
-	allowLabelsList       map[string][]string
-	useAPIServerCache     bool
+	kubeClient                    clientset.Interface
+	customResourceClients         map[string]interface{}
+	vpaClient                     vpaclientset.Interface
+	namespaces                    options.NamespaceList
+	namespaceFilter               string
+	ctx                           context.Context
+	enabledResources              []string
+	familyGeneratorFilter         generator.FamilyGeneratorFilter
+	listWatchMetrics              *watch.ListWatchMetrics
+	shardingMetrics               *sharding.Metrics
+	shard                         int32
+	totalShards                   int
+	buildStoresFunc               ksmtypes.BuildStoresFunc
+	buildCustomResourceStoresFunc ksmtypes.BuildCustomResourceStoresFunc
+	allowAnnotationsList          map[string][]string
+	allowLabelsList               map[string][]string
+	useAPIServerCache             bool
 }
 
 // NewBuilder returns a new builder.
@@ -134,6 +136,16 @@ func (b *Builder) WithVPAClient(c vpaclientset.Interface) {
 	b.vpaClient = c
 }
 
+// WithCustomResourceClients sets the customResourceClients property of a Builder.
+func (b *Builder) WithCustomResourceClients(cs map[string]interface{}) {
+	b.customResourceClients = cs
+}
+
+// WithUsingAPIServerCache configures whether using APIServer cache or not.
+func (b *Builder) WithUsingAPIServerCache(u bool) {
+	b.useAPIServerCache = u
+}
+
 // WithFamilyGeneratorFilter configures the family generator filter which decides which
 // metrics are to be exposed by the store build by the Builder.
 func (b *Builder) WithFamilyGeneratorFilter(l generator.FamilyGeneratorFilter) {
@@ -141,14 +153,42 @@ func (b *Builder) WithFamilyGeneratorFilter(l generator.FamilyGeneratorFilter) {
 }
 
 // WithGenerateStoresFunc configures a custom generate store function
-func (b *Builder) WithGenerateStoresFunc(f ksmtypes.BuildStoresFunc, u bool) {
+func (b *Builder) WithGenerateStoresFunc(f ksmtypes.BuildStoresFunc) {
 	b.buildStoresFunc = f
-	b.useAPIServerCache = u
+}
+
+// WithGenerateCustomResourceStoresFunc configures a custom generate custom resource store function
+func (b *Builder) WithGenerateCustomResourceStoresFunc(f ksmtypes.BuildCustomResourceStoresFunc) {
+	b.buildCustomResourceStoresFunc = f
 }
 
 // DefaultGenerateStoresFunc returns default buildStores function
 func (b *Builder) DefaultGenerateStoresFunc() ksmtypes.BuildStoresFunc {
 	return b.buildStores
+}
+
+// DefaultGenerateCustomResourceStoresFunc returns default buildCustomResourceStores function
+func (b *Builder) DefaultGenerateCustomResourceStoresFunc() ksmtypes.BuildCustomResourceStoresFunc {
+	return b.buildCustomResourceStores
+}
+
+// WithCustomResourceStoreFactories returns configures a custom resource stores factory
+func (b *Builder) WithCustomResourceStoreFactories(fs ...customresource.RegistryFactory) {
+	for i := range fs {
+		f := fs[i]
+		if _, ok := availableStores[f.Name()]; ok {
+			klog.Warningf("The internal resource store named %s already exists and is overridden by a custom resource store with the same name, please make sure it meets your expectation", f.Name())
+		}
+		availableStores[f.Name()] = func(b *Builder) []cache.Store {
+			return b.buildCustomResourceStoresFunc(
+				f.Name(),
+				f.MetricFamilyGenerators(b.allowAnnotationsList[f.Name()], b.allowLabelsList[f.Name()]),
+				f.ExpectedType(),
+				f.ListWatch,
+				b.useAPIServerCache,
+			)
+		}
+	}
 }
 
 // WithAllowAnnotations configures which annotations can be returned for metrics
@@ -269,7 +309,7 @@ func (b *Builder) buildConfigMapStores() []cache.Store {
 }
 
 func (b *Builder) buildCronJobStores() []cache.Store {
-	return b.buildStoresFunc(cronJobMetricFamilies(b.allowAnnotationsList["cronjobs"], b.allowLabelsList["cronjobs"]), &batchv1beta1.CronJob{}, createCronJobListWatch, b.useAPIServerCache)
+	return b.buildStoresFunc(cronJobMetricFamilies(b.allowAnnotationsList["cronjobs"], b.allowLabelsList["cronjobs"]), &batchv1.CronJob{}, createCronJobListWatch, b.useAPIServerCache)
 }
 
 func (b *Builder) buildDaemonSetStores() []cache.Store {
@@ -325,7 +365,7 @@ func (b *Builder) buildPersistentVolumeStores() []cache.Store {
 }
 
 func (b *Builder) buildPodDisruptionBudgetStores() []cache.Store {
-	return b.buildStoresFunc(podDisruptionBudgetMetricFamilies(b.allowAnnotationsList["poddisruptionbudget"], b.allowLabelsList["poddisruptionbudget"]), &policy.PodDisruptionBudget{}, createPodDisruptionBudgetListWatch, b.useAPIServerCache)
+	return b.buildStoresFunc(podDisruptionBudgetMetricFamilies(b.allowAnnotationsList["poddisruptionbudgets"], b.allowLabelsList["poddisruptionbudgets"]), &policyv1.PodDisruptionBudget{}, createPodDisruptionBudgetListWatch, b.useAPIServerCache)
 }
 
 func (b *Builder) buildReplicaSetStores() []cache.Store {
@@ -407,6 +447,47 @@ func (b *Builder) buildStores(
 			composedMetricGenFuncs,
 		)
 		listWatcher := listWatchFunc(b.kubeClient, ns, b.namespaceFilter)
+		b.startReflector(expectedType, store, listWatcher, useAPIServerCache)
+		stores = append(stores, store)
+	}
+
+	return stores
+}
+
+// TODO(Garrybest): Merge `buildStores` and `buildCustomResourceStores`
+func (b *Builder) buildCustomResourceStores(resourceName string,
+	metricFamilies []generator.FamilyGenerator,
+	expectedType interface{},
+	listWatchFunc func(customResourceClient interface{}, ns string, fieldSelector string) cache.ListerWatcher,
+	useAPIServerCache bool,
+) []cache.Store {
+	metricFamilies = generator.FilterFamilyGenerators(b.familyGeneratorFilter, metricFamilies)
+	composedMetricGenFuncs := generator.ComposeMetricGenFuncs(metricFamilies)
+	familyHeaders := generator.ExtractMetricFamilyHeaders(metricFamilies)
+
+	customResourceClient, ok := b.customResourceClients[resourceName]
+	if !ok {
+		klog.Warningf("Custom resource client %s does not exist", resourceName)
+		return []cache.Store{}
+	}
+
+	if b.namespaces.IsAllNamespaces() {
+		store := metricsstore.NewMetricsStore(
+			familyHeaders,
+			composedMetricGenFuncs,
+		)
+		listWatcher := listWatchFunc(customResourceClient, v1.NamespaceAll, b.namespaceFilter)
+		b.startReflector(expectedType, store, listWatcher, useAPIServerCache)
+		return []cache.Store{store}
+	}
+
+	stores := make([]cache.Store, 0, len(b.namespaces))
+	for _, ns := range b.namespaces {
+		store := metricsstore.NewMetricsStore(
+			familyHeaders,
+			composedMetricGenFuncs,
+		)
+		listWatcher := listWatchFunc(customResourceClient, ns, b.namespaceFilter)
 		b.startReflector(expectedType, store, listWatcher, useAPIServerCache)
 		stores = append(stores, store)
 	}
