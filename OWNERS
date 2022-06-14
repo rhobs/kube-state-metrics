@@ -5,12 +5,8 @@ reviewers:
   - simonpasquier
   - dgrisonnet
   - slashpai
-  - prashbnair
   - arajkumar
   - sthaha
-  - PhilipGough
-  - bison
-  - fpetkovski
   - raptorsun
   - jan--f
 
@@ -18,18 +14,18 @@ approvers:
   - simonpasquier
   - dgrisonnet
   - slashpai
-  - prashbnair
   - arajkumar
   - sthaha
-  - PhilipGough
-  - bison
-  - fpetkovski
   - raptorsun
   - jan--f
-  
+
 
 emeritus_approvers:
   - brancz
   - s-urbaniak
   - kakkoyun
   - paulfantom
+  - prashbnair
+  - bison
+  - fpetkovski
+  - PhilipGough

@@ -20,6 +20,8 @@ import (
 	"context"
 	"strconv"
 
+	"k8s.io/utils/net"
+
 	"k8s.io/kube-state-metrics/v2/pkg/constant"
 	"k8s.io/kube-state-metrics/v2/pkg/metric"
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
@@ -55,6 +57,7 @@ func podMetricFamilies(allowAnnotationsList, allowLabelsList []string) []generat
 		createPodCreatedFamilyGenerator(),
 		createPodDeletionTimestampFamilyGenerator(),
 		createPodInfoFamilyGenerator(),
+		createPodIPFamilyGenerator(),
 		createPodInitContainerInfoFamilyGenerator(),
 		createPodInitContainerResourceLimitsFamilyGenerator(),
 		createPodInitContainerResourceRequestsFamilyGenerator(),
@@ -580,6 +583,40 @@ func createPodInfoFamilyGenerator() generator.FamilyGenerator {
 	)
 }
 
+func createPodIPFamilyGenerator() generator.FamilyGenerator {
+	return *generator.NewFamilyGenerator(
+		"kube_pod_ips",
+		"Pod IP addresses",
+		metric.Gauge,
+		"",
+		wrapPodFunc(func(p *v1.Pod) *metric.Family {
+			ms := make([]*metric.Metric, len(p.Status.PodIPs))
+			labelKeys := []string{"ip", "ip_family"}
+
+			for i, ip := range p.Status.PodIPs {
+				netIP := net.ParseIPSloppy(ip.IP)
+				var ipFamily net.IPFamily
+				switch {
+				case net.IsIPv4(netIP):
+					ipFamily = net.IPv4
+				case net.IsIPv6(netIP):
+					ipFamily = net.IPv6
+				default:
+					continue // nil from ParseIPSloppy indicates failure to parse, so we don't include that in our metrics series
+				}
+				ms[i] = &metric.Metric{
+					LabelKeys:   labelKeys,
+					LabelValues: []string{ip.IP, string(ipFamily)},
+					Value:       1,
+				}
+			}
+
+			return &metric.Family{
+				Metrics: ms,
+			}
+		}))
+}
+
 func createPodInitContainerInfoFamilyGenerator() generator.FamilyGenerator {
 	return *generator.NewFamilyGenerator(
 		"kube_pod_init_container_info",
@@ -587,19 +624,19 @@ func createPodInitContainerInfoFamilyGenerator() generator.FamilyGenerator {
 		metric.Gauge,
 		"",
 		wrapPodFunc(func(p *v1.Pod) *metric.Family {
-			ms := make([]*metric.Metric, len(p.Status.InitContainerStatuses))
+			ms := []*metric.Metric{}
 			labelKeys := []string{"container", "image_spec", "image", "image_id", "container_id"}
 
-			for i, c := range p.Spec.InitContainers {
+			for _, c := range p.Spec.InitContainers {
 				for _, cs := range p.Status.InitContainerStatuses {
 					if cs.Name != c.Name {
 						continue
 					}
-					ms[i] = &metric.Metric{
+					ms = append(ms, &metric.Metric{
 						LabelKeys:   labelKeys,
 						LabelValues: []string{cs.Name, c.Image, cs.Image, cs.ImageID, cs.ContainerID},
 						Value:       1,
-					}
+					})
 				}
 			}
 
