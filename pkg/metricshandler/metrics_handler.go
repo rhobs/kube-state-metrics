@@ -19,13 +19,14 @@ package metricshandler
 import (
 	"compress/gzip"
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
 
-	"github.com/pkg/errors"
 	appsv1 "k8s.io/api/apps/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/fields"
@@ -76,7 +77,7 @@ func (m *MetricsHandler) ConfigureSharding(ctx context.Context, shard int32, tot
 		m.cancel()
 	}
 	if totalShards != 1 {
-		klog.Infof("configuring sharding of this instance to be shard index %d (zero-indexed) out of %d total shards", shard, totalShards)
+		klog.InfoS("Configuring sharding of this instance to be shard index (zero-indexed) out of total shards", "shard", shard, "totalShards", totalShards)
 	}
 	ctx, m.cancel = context.WithCancel(ctx)
 	m.storeBuilder.WithSharding(shard, totalShards)
@@ -93,17 +94,17 @@ func (m *MetricsHandler) Run(ctx context.Context) error {
 	autoSharding := len(m.opts.Pod) > 0 && len(m.opts.Namespace) > 0
 
 	if !autoSharding {
-		klog.Info("Autosharding disabled")
+		klog.InfoS("Autosharding disabled")
 		m.ConfigureSharding(ctx, m.opts.Shard, m.opts.TotalShards)
 		<-ctx.Done()
 		return ctx.Err()
 	}
 
-	klog.Infof("Autosharding enabled with pod=%v pod_namespace=%v", m.opts.Pod, m.opts.Namespace)
-	klog.Infof("Auto detecting sharding settings.")
+	klog.InfoS("Autosharding enabled with pod", "pod", klog.KRef(m.opts.Namespace, m.opts.Pod))
+	klog.InfoS("Auto detecting sharding settings")
 	ss, err := detectStatefulSet(m.kubeClient, m.opts.Pod, m.opts.Namespace)
 	if err != nil {
-		return errors.Wrap(err, "detect StatefulSet")
+		return fmt.Errorf("detect StatefulSet: %w", err)
 	}
 	statefulSetName := ss.Name
 
@@ -124,7 +125,7 @@ func (m *MetricsHandler) Run(ctx context.Context) error {
 
 			shard, totalShards, err := shardingSettingsFromStatefulSet(ss, m.opts.Pod)
 			if err != nil {
-				klog.Errorf("detect sharding settings from StatefulSet: %v", err)
+				klog.ErrorS(err, "Detected sharding settings from StatefulSet")
 				return
 			}
 
@@ -151,7 +152,7 @@ func (m *MetricsHandler) Run(ctx context.Context) error {
 
 			shard, totalShards, err := shardingSettingsFromStatefulSet(cur, m.opts.Pod)
 			if err != nil {
-				klog.Errorf("detect sharding settings from StatefulSet: %v", err)
+				klog.ErrorS(err, "Detected sharding settings from StatefulSet")
 				return
 			}
 
@@ -211,7 +212,7 @@ func (m *MetricsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func shardingSettingsFromStatefulSet(ss *appsv1.StatefulSet, podName string) (nominal int32, totalReplicas int, err error) {
 	nominal, err = detectNominalFromPod(ss.Name, podName)
 	if err != nil {
-		return 0, 0, errors.Wrap(err, "detecting Pod nominal")
+		return 0, 0, fmt.Errorf("detecting Pod nominal: %w", err)
 	}
 
 	totalReplicas = 1
@@ -227,7 +228,7 @@ func detectNominalFromPod(statefulSetName, podName string) (int32, error) {
 	nominalString := strings.TrimPrefix(podName, statefulSetName+"-")
 	nominal, err := strconv.Atoi(nominalString)
 	if err != nil {
-		return 0, errors.Wrapf(err, "failed to detect shard index for Pod %s of StatefulSet %s, parsed %s", podName, statefulSetName, nominalString)
+		return 0, fmt.Errorf("failed to detect shard index for Pod %s of StatefulSet %s, parsed %s: %w", podName, statefulSetName, nominalString, err)
 	}
 
 	return int32(nominal), nil
@@ -236,7 +237,7 @@ func detectNominalFromPod(statefulSetName, podName string) (int32, error) {
 func detectStatefulSet(kubeClient kubernetes.Interface, podName, namespaceName string) (*appsv1.StatefulSet, error) {
 	p, err := kubeClient.CoreV1().Pods(namespaceName).Get(context.TODO(), podName, metav1.GetOptions{})
 	if err != nil {
-		return nil, errors.Wrapf(err, "retrieve pod %s for sharding", podName)
+		return nil, fmt.Errorf("retrieve pod %s for sharding: %w", podName, err)
 	}
 
 	owners := p.GetOwnerReferences()
@@ -247,11 +248,11 @@ func detectStatefulSet(kubeClient kubernetes.Interface, podName, namespaceName s
 
 		ss, err := kubeClient.AppsV1().StatefulSets(namespaceName).Get(context.TODO(), o.Name, metav1.GetOptions{})
 		if err != nil {
-			return nil, errors.Wrapf(err, "retrieve shard's StatefulSet: %s/%s", namespaceName, o.Name)
+			return nil, fmt.Errorf("retrieve shard's StatefulSet: %s/%s: %w", namespaceName, o.Name, err)
 		}
 
 		return ss, nil
 	}
 
-	return nil, errors.Errorf("no suitable statefulset found for auto detecting sharding for Pod %s/%s", namespaceName, podName)
+	return nil, fmt.Errorf("no suitable statefulset found for auto detecting sharding for Pod %s/%s", namespaceName, podName)
 }

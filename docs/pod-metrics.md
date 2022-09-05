@@ -9,7 +9,7 @@
 | kube_pod_completion_time | Gauge | Completion time in unix timestamp for a pod | seconds | `pod`=&lt;pod-name&gt; <br> `namespace`=&lt;pod-namespace&gt; <br> `uid`=&lt;pod-uid&gt; | STABLE | - |
 | kube_pod_owner | Gauge | Information about the Pod's owner | |`pod`=&lt;pod-name&gt; <br> `namespace`=&lt;pod-namespace&gt; <br> `owner_kind`=&lt;owner kind&gt; <br> `owner_name`=&lt;owner name&gt; <br> `owner_is_controller`=&lt;whether owner is controller&gt; <br> `uid`=&lt;pod-uid&gt;  | STABLE | - |
 | kube_pod_labels | Gauge | Kubernetes labels converted to Prometheus labels | | `pod`=&lt;pod-name&gt; <br> `namespace`=&lt;pod-namespace&gt; <br> `label_POD_LABEL`=&lt;POD_LABEL&gt; <br> `uid`=&lt;pod-uid&gt; | STABLE | - |
-| kube_pod_nodeselectors| Gauge | Describes the Pod nodeSelectors | |  `pod`=&lt;pod-name&gt; <br> `namespace`=&lt;pod-namespace&gt; <br> `nodeselectors_NODE_SELECTOR`=&lt;NODE_SELECTOR&gt; <br> `uid`=&lt;pod-uid&gt; | EXPERIMENTAL | Opt-in |
+| kube_pod_nodeselectors| Gauge | Describes the Pod nodeSelectors | |  `pod`=&lt;pod-name&gt; <br> `namespace`=&lt;pod-namespace&gt; <br> `nodeselector_NODE_SELECTOR`=&lt;NODE_SELECTOR&gt; <br> `uid`=&lt;pod-uid&gt; | EXPERIMENTAL | Opt-in |
 | kube_pod_status_phase | Gauge | The pods current phase | | `pod`=&lt;pod-name&gt; <br> `namespace`=&lt;pod-namespace&gt; <br> `phase`=&lt;Pending\|Running\|Succeeded\|Failed\|Unknown&gt; <br> `uid`=&lt;pod-uid&gt; | STABLE | - |
 | kube_pod_status_ready | Gauge | Describes whether the pod is ready to serve requests | | `pod`=&lt;pod-name&gt; <br> `namespace`=&lt;pod-namespace&gt; <br> `condition`=&lt;true\|false\|unknown&gt; <br> `uid`=&lt;pod-uid&gt; | STABLE | - |
 | kube_pod_status_scheduled | Gauge | Describes the status of the scheduling process for the pod | |`pod`=&lt;pod-name&gt; <br> `namespace`=&lt;pod-namespace&gt; <br> `condition`=&lt;true\|false\|unknown&gt; <br> `uid`=&lt;pod-uid&gt; | STABLE | - |
@@ -47,6 +47,7 @@
 | kube_pod_status_reason | Gauge | The pod status reasons | |`pod`=&lt;pod-name&gt; <br> `namespace`=&lt;pod-namespace&gt; <br> `reason`=&lt;Evicted\|NodeAffinity\|NodeLost\|Shutdown\|UnexpectedAdmissionError&gt; <br> `uid`=&lt;pod-uid&gt; | EXPERIMENTAL | - |
 | kube_pod_status_scheduled_time | Gauge | Unix timestamp when pod moved into scheduled status | seconds |`pod`=&lt;pod-name&gt; <br> `namespace`=&lt;pod-namespace&gt; <br> `uid`=&lt;pod-uid&gt; | STABLE | - |
 | kube_pod_status_unschedulable | Gauge | Describes the unschedulable status for the pod | |`pod`=&lt;pod-name&gt; <br> `namespace`=&lt;pod-namespace&gt; <br> `uid`=&lt;pod-uid&gt; | STABLE | - |
+| kube_pod_tolerations | Gauge | Information about the pod tolerations | | `pod`=&lt;pod-name&gt; <br> `namespace`=&lt;pod-namespace&gt; <br> `uid`=&lt;pod-uid&gt; <br> `key`=&lt;toleration-key&gt; <br> `operator`=&lt;toleration-operator&gt; <br> `value`=&lt;toleration-value&gt; <br> `effect`=&lt;toleration-effect&gt; `toleration_seconds`=&lt;toleration-seconds&gt; | EXPERIMENTAL | - |
 
 ## Useful metrics queries
 

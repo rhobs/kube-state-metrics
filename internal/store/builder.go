@@ -18,12 +18,12 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"sort"
 	"strconv"
 	"strings"
 
-	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	appsv1 "k8s.io/api/apps/v1"
@@ -34,6 +34,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	policyv1 "k8s.io/api/policy/v1"
+	rbacv1 "k8s.io/api/rbac/v1"
 	storagev1 "k8s.io/api/storage/v1"
 	vpaautoscaling "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1beta2"
 	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
@@ -92,7 +93,7 @@ func (b *Builder) WithMetrics(r prometheus.Registerer) {
 func (b *Builder) WithEnabledResources(r []string) error {
 	for _, col := range r {
 		if !resourceExists(col) {
-			return errors.Errorf("resource %s does not exist. Available resources: %s", col, strings.Join(availableResources(), ","))
+			return fmt.Errorf("resource %s does not exist. Available resources: %s", col, strings.Join(availableResources(), ","))
 		}
 	}
 
@@ -177,7 +178,7 @@ func (b *Builder) WithCustomResourceStoreFactories(fs ...customresource.Registry
 	for i := range fs {
 		f := fs[i]
 		if _, ok := availableStores[f.Name()]; ok {
-			klog.Warningf("The internal resource store named %s already exists and is overridden by a custom resource store with the same name, please make sure it meets your expectation", f.Name())
+			klog.InfoS("The internal resource store already exists and is overridden by a custom resource store with the same name, please make sure it meets your expectation", "registryName", f.Name())
 		}
 		availableStores[f.Name()] = func(b *Builder) []cache.Store {
 			return b.buildCustomResourceStoresFunc(
@@ -229,7 +230,7 @@ func (b *Builder) Build() []metricsstore.MetricsWriter {
 		}
 	}
 
-	klog.Infof("Active resources: %s", strings.Join(activeStoreNames, ","))
+	klog.InfoS("Active resources", "activeStoreNames", strings.Join(activeStoreNames, ","))
 
 	return metricsWriters
 }
@@ -254,14 +255,16 @@ func (b *Builder) BuildStores() [][]cache.Store {
 		}
 	}
 
-	klog.Infof("Active resources: %s", strings.Join(activeStoreNames, ","))
+	klog.InfoS("Active resources", "activeStoreNames", strings.Join(activeStoreNames, ","))
 
 	return allStores
 }
 
 var availableStores = map[string]func(f *Builder) []cache.Store{
 	"certificatesigningrequests":      func(b *Builder) []cache.Store { return b.buildCsrStores() },
+	"clusterroles":                    func(b *Builder) []cache.Store { return b.buildClusterRoleStores() },
 	"configmaps":                      func(b *Builder) []cache.Store { return b.buildConfigMapStores() },
+	"clusterrolebindings":             func(b *Builder) []cache.Store { return b.buildClusterRoleBindingStores() },
 	"cronjobs":                        func(b *Builder) []cache.Store { return b.buildCronJobStores() },
 	"daemonsets":                      func(b *Builder) []cache.Store { return b.buildDaemonSetStores() },
 	"deployments":                     func(b *Builder) []cache.Store { return b.buildDeploymentStores() },
@@ -282,7 +285,10 @@ var availableStores = map[string]func(f *Builder) []cache.Store{
 	"replicasets":                     func(b *Builder) []cache.Store { return b.buildReplicaSetStores() },
 	"replicationcontrollers":          func(b *Builder) []cache.Store { return b.buildReplicationControllerStores() },
 	"resourcequotas":                  func(b *Builder) []cache.Store { return b.buildResourceQuotaStores() },
+	"roles":                           func(b *Builder) []cache.Store { return b.buildRoleStores() },
+	"rolebindings":                    func(b *Builder) []cache.Store { return b.buildRoleBindingStores() },
 	"secrets":                         func(b *Builder) []cache.Store { return b.buildSecretStores() },
+	"serviceaccounts":                 func(b *Builder) []cache.Store { return b.buildServiceAccountStores() },
 	"services":                        func(b *Builder) []cache.Store { return b.buildServiceStores() },
 	"statefulsets":                    func(b *Builder) []cache.Store { return b.buildStatefulSetStores() },
 	"storageclasses":                  func(b *Builder) []cache.Store { return b.buildStorageClassStores() },
@@ -384,6 +390,10 @@ func (b *Builder) buildSecretStores() []cache.Store {
 	return b.buildStoresFunc(secretMetricFamilies(b.allowAnnotationsList["secrets"], b.allowLabelsList["secrets"]), &v1.Secret{}, createSecretListWatch, b.useAPIServerCache)
 }
 
+func (b *Builder) buildServiceAccountStores() []cache.Store {
+	return b.buildStoresFunc(serviceAccountMetricFamilies(b.allowAnnotationsList["serviceaccounts"], b.allowLabelsList["serviceaccounts"]), &v1.ServiceAccount{}, createServiceAccountListWatch, b.useAPIServerCache)
+}
+
 func (b *Builder) buildServiceStores() []cache.Store {
 	return b.buildStoresFunc(serviceMetricFamilies(b.allowAnnotationsList["services"], b.allowLabelsList["services"]), &v1.Service{}, createServiceListWatch, b.useAPIServerCache)
 }
@@ -418,6 +428,22 @@ func (b *Builder) buildVPAStores() []cache.Store {
 
 func (b *Builder) buildLeasesStores() []cache.Store {
 	return b.buildStoresFunc(leaseMetricFamilies, &coordinationv1.Lease{}, createLeaseListWatch, b.useAPIServerCache)
+}
+
+func (b *Builder) buildClusterRoleStores() []cache.Store {
+	return b.buildStoresFunc(clusterRoleMetricFamilies(b.allowAnnotationsList["clusterroles"], b.allowLabelsList["clusterroles"]), &rbacv1.ClusterRole{}, createClusterRoleListWatch, b.useAPIServerCache)
+}
+
+func (b *Builder) buildRoleStores() []cache.Store {
+	return b.buildStoresFunc(roleMetricFamilies(b.allowAnnotationsList["roles"], b.allowLabelsList["roles"]), &rbacv1.Role{}, createRoleListWatch, b.useAPIServerCache)
+}
+
+func (b *Builder) buildClusterRoleBindingStores() []cache.Store {
+	return b.buildStoresFunc(clusterRoleBindingMetricFamilies(b.allowAnnotationsList["clusterrolebindings"], b.allowLabelsList["clusterrolebindings"]), &rbacv1.ClusterRoleBinding{}, createClusterRoleBindingListWatch, b.useAPIServerCache)
+}
+
+func (b *Builder) buildRoleBindingStores() []cache.Store {
+	return b.buildStoresFunc(roleBindingMetricFamilies(b.allowAnnotationsList["rolebindings"], b.allowLabelsList["rolebindings"]), &rbacv1.RoleBinding{}, createRoleBindingListWatch, b.useAPIServerCache)
 }
 
 func (b *Builder) buildStores(
@@ -467,7 +493,7 @@ func (b *Builder) buildCustomResourceStores(resourceName string,
 
 	customResourceClient, ok := b.customResourceClients[resourceName]
 	if !ok {
-		klog.Warningf("Custom resource client %s does not exist", resourceName)
+		klog.InfoS("Custom resource client does not exist", "resourceName", resourceName)
 		return []cache.Store{}
 	}
 

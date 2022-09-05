@@ -116,7 +116,7 @@ func endpointMetricFamilies(allowAnnotationsList, allowLabelsList []string) []ge
 			"kube_endpoint_address_available",
 			"Number of addresses available in endpoint.",
 			metric.Gauge,
-			"",
+			"v2.6.0",
 			wrapEndpointFunc(func(e *v1.Endpoints) *metric.Family {
 				var available int
 				for _, s := range e.Subsets {
@@ -136,7 +136,7 @@ func endpointMetricFamilies(allowAnnotationsList, allowLabelsList []string) []ge
 			"kube_endpoint_address_not_ready",
 			"Number of addresses not ready in endpoint",
 			metric.Gauge,
-			"",
+			"v2.6.0",
 			wrapEndpointFunc(func(e *v1.Endpoints) *metric.Family {
 				var notReady int
 				for _, s := range e.Subsets {
@@ -148,6 +148,34 @@ func endpointMetricFamilies(allowAnnotationsList, allowLabelsList []string) []ge
 							Value: float64(notReady),
 						},
 					},
+				}
+			}),
+		),
+		*generator.NewFamilyGenerator(
+			"kube_endpoint_address",
+			"Information about Endpoint available and non available addresses.",
+			metric.Gauge,
+			"",
+			wrapEndpointFunc(func(e *v1.Endpoints) *metric.Family {
+				ms := []*metric.Metric{}
+				for _, s := range e.Subsets {
+					for _, available := range s.Addresses {
+						ms = append(ms, &metric.Metric{
+							LabelValues: []string{available.IP, "true"},
+							LabelKeys:   []string{"ip", "ready"},
+							Value:       1,
+						})
+					}
+					for _, notReadyAddresses := range s.NotReadyAddresses {
+						ms = append(ms, &metric.Metric{
+							LabelValues: []string{notReadyAddresses.IP, "false"},
+							LabelKeys:   []string{"ip", "ready"},
+							Value:       1,
+						})
+					}
+				}
+				return &metric.Family{
+					Metrics: ms,
 				}
 			}),
 		),
