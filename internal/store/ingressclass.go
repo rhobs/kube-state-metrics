@@ -1,5 +1,5 @@
 /*
-Copyright 2019 The Kubernetes Authors All rights reserved.
+Copyright 2022 The Kubernetes Authors All rights reserved.
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
@@ -21,8 +21,7 @@ import (
 	"k8s.io/kube-state-metrics/v2/pkg/metric"
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
 
-	v1 "k8s.io/api/core/v1"
-	storagev1 "k8s.io/api/storage/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
@@ -31,49 +30,38 @@ import (
 )
 
 var (
-	descStorageClassAnnotationsName     = "kube_storageclass_annotations"
-	descStorageClassAnnotationsHelp     = "Kubernetes annotations converted to Prometheus labels."
-	descStorageClassLabelsName          = "kube_storageclass_labels"
-	descStorageClassLabelsHelp          = "Kubernetes labels converted to Prometheus labels."
-	descStorageClassLabelsDefaultLabels = []string{"storageclass"}
-	defaultReclaimPolicy                = v1.PersistentVolumeReclaimDelete
-	defaultVolumeBindingMode            = storagev1.VolumeBindingImmediate
+	descIngressClassAnnotationsName     = "kube_ingressclass_annotations"
+	descIngressClassAnnotationsHelp     = "Kubernetes annotations converted to Prometheus labels."
+	descIngressClassLabelsName          = "kube_ingressclass_labels"
+	descIngressClassLabelsHelp          = "Kubernetes labels converted to Prometheus labels."
+	descIngressClassLabelsDefaultLabels = []string{"ingressclass"}
 )
 
-func storageClassMetricFamilies(allowAnnotationsList, allowLabelsList []string) []generator.FamilyGenerator {
+func ingressClassMetricFamilies(allowAnnotationsList, allowLabelsList []string) []generator.FamilyGenerator {
 	return []generator.FamilyGenerator{
 		*generator.NewFamilyGeneratorWithStability(
-			"kube_storageclass_info",
-			"Information about storageclass.",
+			"kube_ingressclass_info",
+			"Information about ingressclass.",
 			metric.Gauge,
-			basemetrics.STABLE,
+			basemetrics.ALPHA,
 			"",
-			wrapStorageClassFunc(func(s *storagev1.StorageClass) *metric.Family {
-
-				// Add default values if missing.
-				if s.ReclaimPolicy == nil {
-					s.ReclaimPolicy = &defaultReclaimPolicy
-				}
-
-				if s.VolumeBindingMode == nil {
-					s.VolumeBindingMode = &defaultVolumeBindingMode
-				}
+			wrapIngressClassFunc(func(s *networkingv1.IngressClass) *metric.Family {
 
 				m := metric.Metric{
-					LabelKeys:   []string{"provisioner", "reclaim_policy", "volume_binding_mode"},
-					LabelValues: []string{s.Provisioner, string(*s.ReclaimPolicy), string(*s.VolumeBindingMode)},
+					LabelKeys:   []string{"controller"},
+					LabelValues: []string{s.Spec.Controller},
 					Value:       1,
 				}
 				return &metric.Family{Metrics: []*metric.Metric{&m}}
 			}),
 		),
 		*generator.NewFamilyGeneratorWithStability(
-			"kube_storageclass_created",
+			"kube_ingressclass_created",
 			"Unix creation timestamp",
 			metric.Gauge,
-			basemetrics.STABLE,
+			basemetrics.ALPHA,
 			"",
-			wrapStorageClassFunc(func(s *storagev1.StorageClass) *metric.Family {
+			wrapIngressClassFunc(func(s *networkingv1.IngressClass) *metric.Family {
 				ms := []*metric.Metric{}
 				if !s.CreationTimestamp.IsZero() {
 					ms = append(ms, &metric.Metric{
@@ -85,12 +73,13 @@ func storageClassMetricFamilies(allowAnnotationsList, allowLabelsList []string) 
 				}
 			}),
 		),
-		*generator.NewFamilyGenerator(
-			descStorageClassAnnotationsName,
-			descStorageClassAnnotationsHelp,
+		*generator.NewFamilyGeneratorWithStability(
+			descIngressClassAnnotationsName,
+			descIngressClassAnnotationsHelp,
 			metric.Gauge,
+			basemetrics.ALPHA,
 			"",
-			wrapStorageClassFunc(func(s *storagev1.StorageClass) *metric.Family {
+			wrapIngressClassFunc(func(s *networkingv1.IngressClass) *metric.Family {
 				annotationKeys, annotationValues := createPrometheusLabelKeysValues("annotation", s.Annotations, allowAnnotationsList)
 				return &metric.Family{
 					Metrics: []*metric.Metric{
@@ -104,12 +93,12 @@ func storageClassMetricFamilies(allowAnnotationsList, allowLabelsList []string) 
 			}),
 		),
 		*generator.NewFamilyGeneratorWithStability(
-			descStorageClassLabelsName,
-			descStorageClassLabelsHelp,
+			descIngressClassLabelsName,
+			descIngressClassLabelsHelp,
 			metric.Gauge,
-			basemetrics.STABLE,
+			basemetrics.ALPHA,
 			"",
-			wrapStorageClassFunc(func(s *storagev1.StorageClass) *metric.Family {
+			wrapIngressClassFunc(func(s *networkingv1.IngressClass) *metric.Family {
 				labelKeys, labelValues := createPrometheusLabelKeysValues("label", s.Labels, allowLabelsList)
 				return &metric.Family{
 					Metrics: []*metric.Metric{
@@ -125,27 +114,27 @@ func storageClassMetricFamilies(allowAnnotationsList, allowLabelsList []string) 
 	}
 }
 
-func wrapStorageClassFunc(f func(*storagev1.StorageClass) *metric.Family) func(interface{}) *metric.Family {
+func wrapIngressClassFunc(f func(*networkingv1.IngressClass) *metric.Family) func(interface{}) *metric.Family {
 	return func(obj interface{}) *metric.Family {
-		storageClass := obj.(*storagev1.StorageClass)
+		ingressClass := obj.(*networkingv1.IngressClass)
 
-		metricFamily := f(storageClass)
+		metricFamily := f(ingressClass)
 
 		for _, m := range metricFamily.Metrics {
-			m.LabelKeys, m.LabelValues = mergeKeyValues(descStorageClassLabelsDefaultLabels, []string{storageClass.Name}, m.LabelKeys, m.LabelValues)
+			m.LabelKeys, m.LabelValues = mergeKeyValues(descIngressClassLabelsDefaultLabels, []string{ingressClass.Name}, m.LabelKeys, m.LabelValues)
 		}
 
 		return metricFamily
 	}
 }
 
-func createStorageClassListWatch(kubeClient clientset.Interface, ns string, fieldSelector string) cache.ListerWatcher {
+func createIngressClassListWatch(kubeClient clientset.Interface, ns string, fieldSelector string) cache.ListerWatcher {
 	return &cache.ListWatch{
 		ListFunc: func(opts metav1.ListOptions) (runtime.Object, error) {
-			return kubeClient.StorageV1().StorageClasses().List(context.TODO(), opts)
+			return kubeClient.NetworkingV1().IngressClasses().List(context.TODO(), opts)
 		},
 		WatchFunc: func(opts metav1.ListOptions) (watch.Interface, error) {
-			return kubeClient.StorageV1().StorageClasses().Watch(context.TODO(), opts)
+			return kubeClient.NetworkingV1().IngressClasses().Watch(context.TODO(), opts)
 		},
 	}
 }
