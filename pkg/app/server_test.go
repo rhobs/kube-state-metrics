@@ -73,11 +73,14 @@ func BenchmarkKubeStateMetrics(b *testing.B) {
 
 	builder := store.NewBuilder()
 	builder.WithMetrics(reg)
-	builder.WithEnabledResources(options.DefaultResources.AsSlice())
+	err := builder.WithEnabledResources(options.DefaultResources.AsSlice())
+	if err != nil {
+		b.Fatal(err)
+	}
 	builder.WithKubeClient(kubeClient)
 	builder.WithSharding(0, 1)
 	builder.WithContext(ctx)
-	builder.WithNamespaces(options.DefaultNamespaces, "")
+	builder.WithNamespaces(options.DefaultNamespaces)
 	builder.WithGenerateStoresFunc(builder.DefaultGenerateStoresFunc())
 
 	allowDenyListFilter, err := allowdenylist.New(map[string]struct{}{}, map[string]struct{}{})
@@ -118,7 +121,10 @@ func BenchmarkKubeStateMetrics(b *testing.B) {
 
 			b.StopTimer()
 			buf := bytes.Buffer{}
-			buf.ReadFrom(resp.Body)
+			_, err := buf.ReadFrom(resp.Body)
+			if err != nil {
+				b.Fatal(err)
+			}
 			accumulatedContentLength += buf.Len()
 			b.StartTimer()
 		}
@@ -144,9 +150,12 @@ func TestFullScrapeCycle(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	builder := store.NewBuilder()
 	builder.WithMetrics(reg)
-	builder.WithEnabledResources(options.DefaultResources.AsSlice())
+	err = builder.WithEnabledResources(options.DefaultResources.AsSlice())
+	if err != nil {
+		t.Fatal(err)
+	}
 	builder.WithKubeClient(kubeClient)
-	builder.WithNamespaces(options.DefaultNamespaces, "")
+	builder.WithNamespaces(options.DefaultNamespaces)
 	builder.WithGenerateStoresFunc(builder.DefaultGenerateStoresFunc())
 
 	l, err := allowdenylist.New(map[string]struct{}{}, map[string]struct{}{})
@@ -191,49 +200,50 @@ func TestFullScrapeCycle(t *testing.T) {
 	body, _ := io.ReadAll(resp.Body)
 
 	expected := `# HELP kube_pod_annotations Kubernetes annotations converted to Prometheus labels.
-# HELP kube_pod_completion_time Completion time in unix timestamp for a pod.
-# HELP kube_pod_container_info Information about a container in a pod.
-# HELP kube_pod_container_resource_limits The number of requested limit resource by a container.
-# HELP kube_pod_container_resource_requests The number of requested request resource by a container.
-# HELP kube_pod_container_state_started Start time in unix timestamp for a pod container.
+# HELP kube_pod_completion_time [STABLE] Completion time in unix timestamp for a pod.
+# HELP kube_pod_container_info [STABLE] Information about a container in a pod.
+# HELP kube_pod_container_resource_limits The number of requested limit resource by a container. It is recommended to use the kube_pod_resource_limits metric exposed by kube-scheduler instead, as it is more precise.
+# HELP kube_pod_container_resource_requests The number of requested request resource by a container. It is recommended to use the kube_pod_resource_requests metric exposed by kube-scheduler instead, as it is more precise.
+# HELP kube_pod_container_state_started [STABLE] Start time in unix timestamp for a pod container.
+# HELP kube_pod_container_status_last_terminated_exitcode Describes the exit code for the last container in terminated state.
 # HELP kube_pod_container_status_last_terminated_reason Describes the last reason the container was in terminated state.
-# HELP kube_pod_container_status_ready Describes whether the containers readiness check succeeded.
-# HELP kube_pod_container_status_restarts_total The number of container restarts per container.
-# HELP kube_pod_container_status_running Describes whether the container is currently in running state.
-# HELP kube_pod_container_status_terminated Describes whether the container is currently in terminated state.
+# HELP kube_pod_container_status_ready [STABLE] Describes whether the containers readiness check succeeded.
+# HELP kube_pod_container_status_restarts_total [STABLE] The number of container restarts per container.
+# HELP kube_pod_container_status_running [STABLE] Describes whether the container is currently in running state.
+# HELP kube_pod_container_status_terminated [STABLE] Describes whether the container is currently in terminated state.
 # HELP kube_pod_container_status_terminated_reason Describes the reason the container is currently in terminated state.
-# HELP kube_pod_container_status_waiting Describes whether the container is currently in waiting state.
-# HELP kube_pod_container_status_waiting_reason Describes the reason the container is currently in waiting state.
-# HELP kube_pod_created Unix creation timestamp
+# HELP kube_pod_container_status_waiting [STABLE] Describes whether the container is currently in waiting state.
+# HELP kube_pod_container_status_waiting_reason [STABLE] Describes the reason the container is currently in waiting state.
+# HELP kube_pod_created [STABLE] Unix creation timestamp
 # HELP kube_pod_deletion_timestamp Unix deletion timestamp
-# HELP kube_pod_info Information about pod.
-# HELP kube_pod_init_container_info Information about an init container in a pod.
+# HELP kube_pod_info [STABLE] Information about pod.
+# HELP kube_pod_init_container_info [STABLE] Information about an init container in a pod.
 # HELP kube_pod_init_container_resource_limits The number of requested limit resource by an init container.
 # HELP kube_pod_init_container_resource_requests The number of requested request resource by an init container.
 # HELP kube_pod_init_container_status_last_terminated_reason Describes the last reason the init container was in terminated state.
-# HELP kube_pod_init_container_status_ready Describes whether the init containers readiness check succeeded.
-# HELP kube_pod_init_container_status_restarts_total The number of restarts for the init container.
-# HELP kube_pod_init_container_status_running Describes whether the init container is currently in running state.
-# HELP kube_pod_init_container_status_terminated Describes whether the init container is currently in terminated state.
+# HELP kube_pod_init_container_status_ready [STABLE] Describes whether the init containers readiness check succeeded.
+# HELP kube_pod_init_container_status_restarts_total [STABLE] The number of restarts for the init container.
+# HELP kube_pod_init_container_status_running [STABLE] Describes whether the init container is currently in running state.
+# HELP kube_pod_init_container_status_terminated [STABLE] Describes whether the init container is currently in terminated state.
 # HELP kube_pod_init_container_status_terminated_reason Describes the reason the init container is currently in terminated state.
-# HELP kube_pod_init_container_status_waiting Describes whether the init container is currently in waiting state.
+# HELP kube_pod_init_container_status_waiting [STABLE] Describes whether the init container is currently in waiting state.
 # HELP kube_pod_init_container_status_waiting_reason Describes the reason the init container is currently in waiting state.
 # HELP kube_pod_ips Pod IP addresses
-# HELP kube_pod_labels Kubernetes labels converted to Prometheus labels.
+# HELP kube_pod_labels [STABLE] Kubernetes labels converted to Prometheus labels.
 # HELP kube_pod_overhead_cpu_cores The pod overhead in regards to cpu cores associated with running a pod.
 # HELP kube_pod_overhead_memory_bytes The pod overhead in regards to memory associated with running a pod.
 # HELP kube_pod_runtimeclass_name_info The runtimeclass associated with the pod.
-# HELP kube_pod_owner Information about the Pod's owner.
-# HELP kube_pod_restart_policy Describes the restart policy in use by this pod.
-# HELP kube_pod_spec_volumes_persistentvolumeclaims_info Information about persistentvolumeclaim volumes in a pod.
-# HELP kube_pod_spec_volumes_persistentvolumeclaims_readonly Describes whether a persistentvolumeclaim is mounted read only.
-# HELP kube_pod_start_time Start time in unix timestamp for a pod.
-# HELP kube_pod_status_phase The pods current phase.
-# HELP kube_pod_status_ready Describes whether the pod is ready to serve requests.
+# HELP kube_pod_owner [STABLE] Information about the Pod's owner.
+# HELP kube_pod_restart_policy [STABLE] Describes the restart policy in use by this pod.
+# HELP kube_pod_spec_volumes_persistentvolumeclaims_info [STABLE] Information about persistentvolumeclaim volumes in a pod.
+# HELP kube_pod_spec_volumes_persistentvolumeclaims_readonly [STABLE] Describes whether a persistentvolumeclaim is mounted read only.
+# HELP kube_pod_start_time [STABLE] Start time in unix timestamp for a pod.
+# HELP kube_pod_status_phase [STABLE] The pods current phase.
+# HELP kube_pod_status_ready [STABLE] Describes whether the pod is ready to serve requests.
 # HELP kube_pod_status_reason The pod status reasons
-# HELP kube_pod_status_scheduled Describes the status of the scheduling process for the pod.
-# HELP kube_pod_status_scheduled_time Unix timestamp when pod moved into scheduled status
-# HELP kube_pod_status_unschedulable Describes the unschedulable status for the pod.
+# HELP kube_pod_status_scheduled [STABLE] Describes the status of the scheduling process for the pod.
+# HELP kube_pod_status_scheduled_time [STABLE] Unix timestamp when pod moved into scheduled status
+# HELP kube_pod_status_unschedulable [STABLE] Describes the unschedulable status for the pod.
 # HELP kube_pod_tolerations Information about the pod tolerations
 # TYPE kube_pod_annotations gauge
 # TYPE kube_pod_completion_time gauge
@@ -241,6 +251,7 @@ func TestFullScrapeCycle(t *testing.T) {
 # TYPE kube_pod_container_resource_limits gauge
 # TYPE kube_pod_container_resource_requests gauge
 # TYPE kube_pod_container_state_started gauge
+# TYPE kube_pod_container_status_last_terminated_exitcode gauge
 # TYPE kube_pod_container_status_last_terminated_reason gauge
 # TYPE kube_pod_container_status_ready gauge
 # TYPE kube_pod_container_status_restarts_total counter
@@ -297,6 +308,7 @@ kube_pod_container_resource_requests{namespace="default",pod="pod0",uid="abc-0",
 kube_pod_container_resource_requests{namespace="default",pod="pod0",uid="abc-0",container="pod1_con1",node="node1",resource="storage",unit="byte"} 4e+08
 kube_pod_container_resource_requests{namespace="default",pod="pod0",uid="abc-0",container="pod1_con2",node="node1",resource="cpu",unit="core"} 0.3
 kube_pod_container_resource_requests{namespace="default",pod="pod0",uid="abc-0",container="pod1_con2",node="node1",resource="memory",unit="byte"} 2e+08
+kube_pod_container_status_last_terminated_exitcode{namespace="default",pod="pod0",uid="abc-0",container="pod1_con1"} 137
 kube_pod_container_status_last_terminated_reason{namespace="default",pod="pod0",uid="abc-0",container="pod1_con1",reason="OOMKilled"} 1
 kube_pod_container_status_ready{namespace="default",pod="pod0",uid="abc-0",container="pod1_con1"} 0
 kube_pod_container_status_ready{namespace="default",pod="pod0",uid="abc-0",container="pod1_con2"} 0
@@ -425,9 +437,12 @@ func TestShardingEquivalenceScrapeCycle(t *testing.T) {
 	reg := prometheus.NewRegistry()
 	unshardedBuilder := store.NewBuilder()
 	unshardedBuilder.WithMetrics(reg)
-	unshardedBuilder.WithEnabledResources(options.DefaultResources.AsSlice())
+	err = unshardedBuilder.WithEnabledResources(options.DefaultResources.AsSlice())
+	if err != nil {
+		t.Fatal(err)
+	}
 	unshardedBuilder.WithKubeClient(kubeClient)
-	unshardedBuilder.WithNamespaces(options.DefaultNamespaces, "")
+	unshardedBuilder.WithNamespaces(options.DefaultNamespaces)
 	unshardedBuilder.WithFamilyGeneratorFilter(l)
 	unshardedBuilder.WithAllowLabels(map[string][]string{})
 	unshardedBuilder.WithGenerateStoresFunc(unshardedBuilder.DefaultGenerateStoresFunc())
@@ -438,9 +453,12 @@ func TestShardingEquivalenceScrapeCycle(t *testing.T) {
 	regShard1 := prometheus.NewRegistry()
 	shardedBuilder1 := store.NewBuilder()
 	shardedBuilder1.WithMetrics(regShard1)
-	shardedBuilder1.WithEnabledResources(options.DefaultResources.AsSlice())
+	err = shardedBuilder1.WithEnabledResources(options.DefaultResources.AsSlice())
+	if err != nil {
+		t.Fatal(err)
+	}
 	shardedBuilder1.WithKubeClient(kubeClient)
-	shardedBuilder1.WithNamespaces(options.DefaultNamespaces, "")
+	shardedBuilder1.WithNamespaces(options.DefaultNamespaces)
 	shardedBuilder1.WithFamilyGeneratorFilter(l)
 	shardedBuilder1.WithAllowLabels(map[string][]string{})
 	shardedBuilder1.WithGenerateStoresFunc(shardedBuilder1.DefaultGenerateStoresFunc())
@@ -451,9 +469,12 @@ func TestShardingEquivalenceScrapeCycle(t *testing.T) {
 	regShard2 := prometheus.NewRegistry()
 	shardedBuilder2 := store.NewBuilder()
 	shardedBuilder2.WithMetrics(regShard2)
-	shardedBuilder2.WithEnabledResources(options.DefaultResources.AsSlice())
+	err = shardedBuilder2.WithEnabledResources(options.DefaultResources.AsSlice())
+	if err != nil {
+		t.Fatal(err)
+	}
 	shardedBuilder2.WithKubeClient(kubeClient)
-	shardedBuilder2.WithNamespaces(options.DefaultNamespaces, "")
+	shardedBuilder2.WithNamespaces(options.DefaultNamespaces)
 	shardedBuilder2.WithFamilyGeneratorFilter(l)
 	shardedBuilder2.WithAllowLabels(map[string][]string{})
 	shardedBuilder2.WithGenerateStoresFunc(shardedBuilder2.DefaultGenerateStoresFunc())
@@ -588,10 +609,14 @@ func TestCustomResourceExtension(t *testing.T) {
 	builder := store.NewBuilder()
 	builder.WithCustomResourceStoreFactories(factories...)
 	builder.WithMetrics(reg)
-	builder.WithEnabledResources(resources)
+	err := builder.WithEnabledResources(resources)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	builder.WithKubeClient(kubeClient)
 	builder.WithCustomResourceClients(customResourceClients)
-	builder.WithNamespaces(options.DefaultNamespaces, "")
+	builder.WithNamespaces(options.DefaultNamespaces)
 	builder.WithGenerateStoresFunc(builder.DefaultGenerateStoresFunc())
 	builder.WithGenerateCustomResourceStoresFunc(builder.DefaultGenerateCustomResourceStoresFunc())
 
@@ -794,7 +819,8 @@ func pod(client *fake.Clientset, index int) error {
 					},
 					LastTerminationState: v1.ContainerState{
 						Terminated: &v1.ContainerStateTerminated{
-							Reason: "OOMKilled",
+							Reason:   "OOMKilled",
+							ExitCode: 137,
 						},
 					},
 				},

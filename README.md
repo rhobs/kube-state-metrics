@@ -45,6 +45,7 @@ are deleted they are no longer visible on the `/metrics` endpoint.
   - [Resource recommendation](#resource-recommendation)
   - [Horizontal sharding](#horizontal-sharding)
     - [Automated sharding](#automated-sharding)
+  - [Daemonset sharding for pod metrics](#daemonset-sharding-pod-metrics)
 - [Setup](#setup)
   - [Building the Docker container](#building-the-docker-container)
 - [Usage](#usage)
@@ -67,19 +68,17 @@ All additional compatibility is only best effort, or happens to still/already be
 #### Compatibility matrix
 
 At most, 5 kube-state-metrics and 5 [kubernetes releases](https://github.com/kubernetes/kubernetes/releases) will be recorded below.
+Generally, it is recommended to use the latest release of kube-state-metrics. If you run a very recent version of Kubernetes, you might want to use an unreleased version to have the full range of supported resources. If you run an older version of Kubernetes, you might need to run an older version in order to have full support for all resources. Be aware, that the maintainers will only support the latest release. Older versions might be supported by interested users of the community.
 
-| kube-state-metrics |  **Kubernetes 1.20** | **Kubernetes 1.21** | **Kubernetes 1.22** | **Kubernetes 1.23** | **Kubernetes 1.24** |
-|--------------------|:--------------------:|:---------------------:|:-------------------:|:-------------------:|:-------------------:|
-| **v2.3.0**         |          ✓           |           ✓           |          ✓          |          ✓          |          -          |
-| **v2.4.2**         |         -/✓          |          -/✓          |          ✓          |          ✓          |          -          |
-| **v2.5.0**         |         -/✓          |          -/✓          |          ✓          |          ✓          |          ✓          |
-| **v2.6.0**         |         -/✓          |          -/✓          |          ✓          |          ✓          |          ✓          |
-| **master**         |         -/✓          |          -/✓          |          ✓          |          ✓          |          ✓          |
+| kube-state-metrics | Kubernetes client-go Version |
+|--------------------|:----------------------------:|
+| **v2.3.0**         | v1.23                        |
+| **v2.4.2**         | v1.23                        |
+| **v2.5.0**         | v1.24                        |
+| **v2.6.0**         | v1.24                        |
+| **v2.7.0**         | v1.25                        |
+| **master**         | v1.25                        |
 
-- `✓` Fully supported version range.
-- `-` The Kubernetes cluster has features the client-go library can't use (additional API objects, deprecated APIs, etc).
-
-**Note:** The current kube-state-metrics `v2.0.0 +` releases work on Kubernetes v1.17 & v1.18 excluding Ingress or CertificateSigningRequest resource metrics. If you require those metrics on an older Kubernetes version, use kube-state-metrics `v1.9.8`.
 
 #### Resource group version compatibility
 
@@ -90,7 +89,7 @@ release.
 #### Container Image
 
 The latest container image can be found at:
-* `registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.6.0` (arch: `amd64`, `arm`, `arm64`, `ppc64le` and `s390x`)
+* `registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.7.0` (arch: `amd64`, `arm`, `arm64`, `ppc64le` and `s390x`)
 
 ### Metrics Documentation
 
@@ -237,6 +236,36 @@ To enable automated sharding, kube-state-metrics must be run by a `StatefulSet` 
 This way of deploying shards is useful when you want to manage KSM shards through a single Kubernetes resource (a single `StatefulSet` in this case) instead of having one `Deployment` per shard. The advantage can be especially significant when deploying a high number of shards.
 
 The downside of using an auto-sharded setup comes from the rollout strategy supported by `StatefulSet`s. When managed by a `StatefulSet`, pods are replaced one at a time with each pod first getting terminated and then recreated. Besides such rollouts being slower, they will also lead to short downtime for each shard. If a Prometheus scrape happens during a rollout, it can miss some of the metrics exported by kube-state-metrics.
+
+### Daemonset sharding for pod metrics
+
+For pod metrics, they can be sharded per node with the following flag:
+* `--node`
+
+Each kube-state-metrics pod uses FieldSelector (spec.nodeName) to watch/list pod metrics only on the same node.
+
+A daemonset kube-state-metrics example:
+```
+apiVersion: apps/v1
+kind: DaemonSet
+spec:
+  template:
+    spec:
+      containers:
+      - image: registry.k8s.io/kube-state-metrics/kube-state-metrics:IMAGE_TAG
+        name: kube-state-metrics
+        args:
+        - --resource=pods
+        - --node=$(NODE_NAME)
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+```
+
+Other metrics can be sharded via [Horizontal sharding](#horizontal-sharding).
 
 ### Setup
 

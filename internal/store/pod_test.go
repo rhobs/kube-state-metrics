@@ -62,7 +62,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-			# HELP kube_pod_container_info Information about a container in a pod.
+			# HELP kube_pod_container_info [STABLE] Information about a container in a pod.
 			# TYPE kube_pod_container_info gauge
 			kube_pod_container_info{container="container1",container_id="docker://ab123",image="k8s.gcr.io/hyperkube1",image_spec="k8s.gcr.io/hyperkube1_spec",image_id="docker://sha256:aaa",namespace="ns1",pod="pod1",uid="uid1"} 1`,
 			MetricNames: []string{"kube_pod_container_info"},
@@ -118,8 +118,8 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_container_info Information about a container in a pod.
-				# HELP kube_pod_init_container_info Information about an init container in a pod.
+				# HELP kube_pod_container_info [STABLE] Information about a container in a pod.
+				# HELP kube_pod_init_container_info [STABLE] Information about an init container in a pod.
 				# TYPE kube_pod_container_info gauge
 				# TYPE kube_pod_init_container_info gauge
 				kube_pod_container_info{container="container2",container_id="docker://cd456",image_spec="k8s.gcr.io/hyperkube2_spec",image="k8s.gcr.io/hyperkube2",image_id="docker://sha256:bbb",namespace="ns2",pod="pod2",uid="uid2"} 1
@@ -152,7 +152,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_container_status_ready Describes whether the containers readiness check succeeded.
+				# HELP kube_pod_container_status_ready [STABLE] Describes whether the containers readiness check succeeded.
 				# TYPE kube_pod_container_status_ready gauge
 				kube_pod_container_status_ready{container="container1",namespace="ns1",pod="pod1",uid="uid1"} 1`,
 			MetricNames: []string{"kube_pod_container_status_ready"},
@@ -190,7 +190,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_container_status_ready Describes whether the containers readiness check succeeded.
+				# HELP kube_pod_container_status_ready [STABLE] Describes whether the containers readiness check succeeded.
 				# TYPE kube_pod_container_status_ready gauge
 				kube_pod_container_status_ready{container="container2",namespace="ns2",pod="pod2",uid="uid2"} 1
 				kube_pod_container_status_ready{container="container3",namespace="ns2",pod="pod2",uid="uid2"} 0
@@ -250,7 +250,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_init_container_status_ready Describes whether the init containers readiness check succeeded.
+				# HELP kube_pod_init_container_status_ready [STABLE] Describes whether the init containers readiness check succeeded.
 				# TYPE kube_pod_init_container_status_ready gauge
 				kube_pod_init_container_status_ready{container="initcontainer1",namespace="ns3",pod="pod3",uid="uid3"} 1
 				kube_pod_init_container_status_ready{container="initcontainer2",namespace="ns3",pod="pod3",uid="uid3"} 0
@@ -282,7 +282,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_container_status_restarts_total The number of container restarts per container.
+				# HELP kube_pod_container_status_restarts_total [STABLE] The number of container restarts per container.
 				# TYPE kube_pod_container_status_restarts_total counter
 				kube_pod_container_status_restarts_total{container="container1",namespace="ns1",pod="pod1",uid="uid1"} 0
 				`,
@@ -313,7 +313,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_init_container_status_restarts_total The number of restarts for the init container.
+				# HELP kube_pod_init_container_status_restarts_total [STABLE] The number of restarts for the init container.
 				# TYPE kube_pod_init_container_status_restarts_total counter
 				kube_pod_init_container_status_restarts_total{container="initcontainer1",namespace="ns2",pod="pod2",uid="uid2"} 1
 				`,
@@ -352,7 +352,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_container_status_restarts_total The number of container restarts per container.
+				# HELP kube_pod_container_status_restarts_total [STABLE] The number of container restarts per container.
 				# TYPE kube_pod_container_status_restarts_total counter
 				kube_pod_container_status_restarts_total{container="container2",namespace="ns2",pod="pod2",uid="uid2"} 0
 				kube_pod_container_status_restarts_total{container="container3",namespace="ns2",pod="pod2",uid="uid2"} 1
@@ -392,7 +392,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_init_container_status_restarts_total The number of restarts for the init container.
+				# HELP kube_pod_init_container_status_restarts_total [STABLE] The number of restarts for the init container.
 				# TYPE kube_pod_init_container_status_restarts_total counter
 				kube_pod_init_container_status_restarts_total{container="initcontainer2",namespace="ns2",pod="pod2",uid="uid2"} 0
 				kube_pod_init_container_status_restarts_total{container="initcontainer3",namespace="ns2",pod="pod2",uid="uid2"} 1
@@ -444,16 +444,16 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_container_status_running Describes whether the container is currently in running state.
-				# HELP kube_pod_container_state_started Start time in unix timestamp for a pod container.
-				# HELP kube_pod_container_status_terminated Describes whether the container is currently in terminated state.
+				# HELP kube_pod_container_status_running [STABLE] Describes whether the container is currently in running state.
+				# HELP kube_pod_container_state_started [STABLE] Start time in unix timestamp for a pod container.
+				# HELP kube_pod_container_status_terminated [STABLE] Describes whether the container is currently in terminated state.
 				# HELP kube_pod_container_status_terminated_reason Describes the reason the container is currently in terminated state.
-				# HELP kube_pod_container_status_waiting Describes whether the container is currently in waiting state.
-				# HELP kube_pod_container_status_waiting_reason Describes the reason the container is currently in waiting state.
-				# HELP kube_pod_init_container_status_running Describes whether the init container is currently in running state.
-				# HELP kube_pod_init_container_status_terminated Describes whether the init container is currently in terminated state.
+				# HELP kube_pod_container_status_waiting [STABLE] Describes whether the container is currently in waiting state.
+				# HELP kube_pod_container_status_waiting_reason [STABLE] Describes the reason the container is currently in waiting state.
+				# HELP kube_pod_init_container_status_running [STABLE] Describes whether the init container is currently in running state.
+				# HELP kube_pod_init_container_status_terminated [STABLE] Describes whether the init container is currently in terminated state.
 				# HELP kube_pod_init_container_status_terminated_reason Describes the reason the init container is currently in terminated state.
-				# HELP kube_pod_init_container_status_waiting Describes whether the init container is currently in waiting state.
+				# HELP kube_pod_init_container_status_waiting [STABLE] Describes whether the init container is currently in waiting state.
 				# HELP kube_pod_init_container_status_waiting_reason Describes the reason the init container is currently in waiting state.
 				# TYPE kube_pod_container_status_running gauge
 				# TYPE kube_pod_container_state_started gauge
@@ -519,12 +519,12 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_container_status_running Describes whether the container is currently in running state.
-				# HELP kube_pod_container_state_started Start time in unix timestamp for a pod container.
-				# HELP kube_pod_container_status_terminated Describes whether the container is currently in terminated state.
+				# HELP kube_pod_container_status_running [STABLE] Describes whether the container is currently in running state.
+				# HELP kube_pod_container_state_started [STABLE] Start time in unix timestamp for a pod container.
+				# HELP kube_pod_container_status_terminated [STABLE] Describes whether the container is currently in terminated state.
 				# HELP kube_pod_container_status_terminated_reason Describes the reason the container is currently in terminated state.
-				# HELP kube_pod_container_status_waiting Describes whether the container is currently in waiting state.
-				# HELP kube_pod_container_status_waiting_reason Describes the reason the container is currently in waiting state.
+				# HELP kube_pod_container_status_waiting [STABLE] Describes whether the container is currently in waiting state.
+				# HELP kube_pod_container_status_waiting_reason [STABLE] Describes the reason the container is currently in waiting state.
 				# TYPE kube_pod_container_status_running gauge
 				# TYPE kube_pod_container_state_started gauge
 				# TYPE kube_pod_container_status_terminated gauge
@@ -573,7 +573,8 @@ func TestPodStore(t *testing.T) {
 									StartedAt: metav1.Time{
 										Time: time.Unix(1501777018, 0),
 									},
-									Reason: "OOMKilled",
+									Reason:   "OOMKilled",
+									ExitCode: 137,
 								},
 							},
 						},
@@ -589,12 +590,12 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_container_status_running Describes whether the container is currently in running state.
-				# HELP kube_pod_container_state_started Start time in unix timestamp for a pod container.
-				# HELP kube_pod_container_status_terminated Describes whether the container is currently in terminated state.
+				# HELP kube_pod_container_status_running [STABLE] Describes whether the container is currently in running state.
+				# HELP kube_pod_container_state_started [STABLE] Start time in unix timestamp for a pod container.
+				# HELP kube_pod_container_status_terminated [STABLE] Describes whether the container is currently in terminated state.
 				# HELP kube_pod_container_status_terminated_reason Describes the reason the container is currently in terminated state.
-				# HELP kube_pod_container_status_waiting Describes whether the container is currently in waiting state.
-				# HELP kube_pod_container_status_waiting_reason Describes the reason the container is currently in waiting state.
+				# HELP kube_pod_container_status_waiting [STABLE] Describes whether the container is currently in waiting state.
+				# HELP kube_pod_container_status_waiting_reason [STABLE] Describes the reason the container is currently in waiting state.
 				# TYPE kube_pod_container_status_running gauge
 				# TYPE kube_pod_container_state_started gauge
 				# TYPE kube_pod_container_status_terminated gauge
@@ -648,12 +649,14 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
+				# HELP kube_pod_container_status_last_terminated_exitcode Describes the exit code for the last container in terminated state.
 				# HELP kube_pod_container_status_last_terminated_reason Describes the last reason the container was in terminated state.
-				# HELP kube_pod_container_status_running Describes whether the container is currently in running state.
-				# HELP kube_pod_container_status_terminated Describes whether the container is currently in terminated state.
+				# HELP kube_pod_container_status_running [STABLE] Describes whether the container is currently in running state.
+				# HELP kube_pod_container_status_terminated [STABLE] Describes whether the container is currently in terminated state.
 				# HELP kube_pod_container_status_terminated_reason Describes the reason the container is currently in terminated state.
-				# HELP kube_pod_container_status_waiting Describes whether the container is currently in waiting state.
-				# HELP kube_pod_container_status_waiting_reason Describes the reason the container is currently in waiting state.
+				# HELP kube_pod_container_status_waiting [STABLE] Describes whether the container is currently in waiting state.
+				# HELP kube_pod_container_status_waiting_reason [STABLE] Describes the reason the container is currently in waiting state.
+				# TYPE kube_pod_container_status_last_terminated_exitcode gauge
 				# TYPE kube_pod_container_status_last_terminated_reason gauge
 				# TYPE kube_pod_container_status_running gauge
 				# TYPE kube_pod_container_status_terminated gauge
@@ -678,6 +681,10 @@ func TestPodStore(t *testing.T) {
 				"kube_pod_container_status_last_terminated_reason",
 				"kube_pod_container_status_last_terminated_reason",
 				"kube_pod_container_status_last_terminated_reason",
+				"kube_pod_container_status_last_terminated_exitcode",
+				"kube_pod_container_status_last_terminated_exitcode",
+				"kube_pod_container_status_last_terminated_exitcode",
+				"kube_pod_container_status_last_terminated_exitcode",
 			},
 		},
 		{
@@ -709,7 +716,8 @@ func TestPodStore(t *testing.T) {
 							},
 							LastTerminationState: v1.ContainerState{
 								Terminated: &v1.ContainerStateTerminated{
-									Reason: "OOMKilled",
+									Reason:   "OOMKilled",
+									ExitCode: 137,
 								},
 							},
 						},
@@ -718,13 +726,15 @@ func TestPodStore(t *testing.T) {
 			},
 			Want: `
 				# HELP kube_pod_container_status_last_terminated_reason Describes the last reason the container was in terminated state.
-				# HELP kube_pod_container_status_running Describes whether the container is currently in running state.
-				# HELP kube_pod_container_status_terminated Describes whether the container is currently in terminated state.
+				# HELP kube_pod_container_status_last_terminated_exitcode Describes the exit code for the last container in terminated state.
+				# HELP kube_pod_container_status_running [STABLE] Describes whether the container is currently in running state.
+				# HELP kube_pod_container_status_terminated [STABLE] Describes whether the container is currently in terminated state.
 				# HELP kube_pod_container_status_terminated_reason Describes the reason the container is currently in terminated state.
-				# HELP kube_pod_container_status_waiting Describes whether the container is currently in waiting state.
-				# HELP kube_pod_container_status_waiting_reason Describes the reason the container is currently in waiting state.
-				# HELP kube_pod_container_state_started Start time in unix timestamp for a pod container.
+				# HELP kube_pod_container_status_waiting [STABLE] Describes whether the container is currently in waiting state.
+				# HELP kube_pod_container_status_waiting_reason [STABLE] Describes the reason the container is currently in waiting state.
+				# HELP kube_pod_container_state_started [STABLE] Start time in unix timestamp for a pod container.
 				# TYPE kube_pod_container_status_last_terminated_reason gauge
+				# TYPE kube_pod_container_status_last_terminated_exitcode gauge
 				# TYPE kube_pod_container_status_running gauge
 				# TYPE kube_pod_container_status_terminated gauge
 				# TYPE kube_pod_container_status_terminated_reason gauge
@@ -736,9 +746,11 @@ func TestPodStore(t *testing.T) {
 				kube_pod_container_status_terminated{container="container7",namespace="ns6",pod="pod6",uid="uid6"} 0
 				kube_pod_container_status_waiting{container="container7",namespace="ns6",pod="pod6",uid="uid6"} 0
 				kube_pod_container_status_last_terminated_reason{container="container7",namespace="ns6",pod="pod6",reason="OOMKilled",uid="uid6"} 1
+				kube_pod_container_status_last_terminated_exitcode{container="container7",namespace="ns6",pod="pod6",uid="uid6"} 137
 			`,
 			MetricNames: []string{
 				"kube_pod_container_status_last_terminated_reason",
+				"kube_pod_container_status_last_terminated_exitcode",
 				"kube_pod_container_status_running",
 				"kube_pod_container_state_started",
 				"kube_pod_container_status_terminated",
@@ -774,7 +786,8 @@ func TestPodStore(t *testing.T) {
 							},
 							LastTerminationState: v1.ContainerState{
 								Terminated: &v1.ContainerStateTerminated{
-									Reason: "DeadlineExceeded",
+									Reason:   "DeadlineExceeded",
+									ExitCode: 143,
 								},
 							},
 						},
@@ -782,13 +795,15 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
+				# HELP kube_pod_container_status_last_terminated_exitcode Describes the exit code for the last container in terminated state.
 				# HELP kube_pod_container_status_last_terminated_reason Describes the last reason the container was in terminated state.
-				# HELP kube_pod_container_status_running Describes whether the container is currently in running state.
-				# HELP kube_pod_container_state_started Start time in unix timestamp for a pod container.
-				# HELP kube_pod_container_status_terminated Describes whether the container is currently in terminated state.
+				# HELP kube_pod_container_status_running [STABLE] Describes whether the container is currently in running state.
+				# HELP kube_pod_container_state_started [STABLE] Start time in unix timestamp for a pod container.
+				# HELP kube_pod_container_status_terminated [STABLE] Describes whether the container is currently in terminated state.
 				# HELP kube_pod_container_status_terminated_reason Describes the reason the container is currently in terminated state.
-				# HELP kube_pod_container_status_waiting Describes whether the container is currently in waiting state.
-				# HELP kube_pod_container_status_waiting_reason Describes the reason the container is currently in waiting state.
+				# HELP kube_pod_container_status_waiting [STABLE] Describes whether the container is currently in waiting state.
+				# HELP kube_pod_container_status_waiting_reason [STABLE] Describes the reason the container is currently in waiting state.
+				# TYPE kube_pod_container_status_last_terminated_exitcode gauge
 				# TYPE kube_pod_container_status_last_terminated_reason gauge
 				# TYPE kube_pod_container_status_running gauge
 				# TYPE kube_pod_container_state_started gauge
@@ -797,6 +812,7 @@ func TestPodStore(t *testing.T) {
 				# TYPE kube_pod_container_status_waiting gauge
 				# TYPE kube_pod_container_status_waiting_reason gauge
 				kube_pod_container_state_started{container="container7",namespace="ns7",pod="pod7",uid="uid7"} 1.501777018e+09
+				kube_pod_container_status_last_terminated_exitcode{container="container7",namespace="ns7",pod="pod7",uid="uid7"} 143
 				kube_pod_container_status_last_terminated_reason{container="container7",namespace="ns7",pod="pod7",reason="DeadlineExceeded",uid="uid7"} 1
 				kube_pod_container_status_running{container="container7",namespace="ns7",pod="pod7",uid="uid7"} 1
 				kube_pod_container_status_terminated{container="container7",namespace="ns7",pod="pod7",uid="uid7"} 0
@@ -809,6 +825,7 @@ func TestPodStore(t *testing.T) {
 				"kube_pod_container_status_terminated_reason",
 				"kube_pod_container_status_waiting",
 				"kube_pod_container_status_last_terminated_reason",
+				"kube_pod_container_status_last_terminated_exitcode",
 			},
 		},
 		{
@@ -840,11 +857,11 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_container_status_running Describes whether the container is currently in running state.
-				# HELP kube_pod_container_status_terminated Describes whether the container is currently in terminated state.
+				# HELP kube_pod_container_status_running [STABLE] Describes whether the container is currently in running state.
+				# HELP kube_pod_container_status_terminated [STABLE] Describes whether the container is currently in terminated state.
 				# HELP kube_pod_container_status_terminated_reason Describes the reason the container is currently in terminated state.
-				# HELP kube_pod_container_status_waiting Describes whether the container is currently in waiting state.
-				# HELP kube_pod_container_status_waiting_reason Describes the reason the container is currently in waiting state.
+				# HELP kube_pod_container_status_waiting [STABLE] Describes whether the container is currently in waiting state.
+				# HELP kube_pod_container_status_waiting_reason [STABLE] Describes the reason the container is currently in waiting state.
 				# TYPE kube_pod_container_status_running gauge
 				# TYPE kube_pod_container_status_terminated gauge
 				# TYPE kube_pod_container_status_terminated_reason gauge
@@ -892,11 +909,11 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_container_status_running Describes whether the container is currently in running state.
-				# HELP kube_pod_container_status_terminated Describes whether the container is currently in terminated state.
+				# HELP kube_pod_container_status_running [STABLE] Describes whether the container is currently in running state.
+				# HELP kube_pod_container_status_terminated [STABLE] Describes whether the container is currently in terminated state.
 				# HELP kube_pod_container_status_terminated_reason Describes the reason the container is currently in terminated state.
-				# HELP kube_pod_container_status_waiting Describes whether the container is currently in waiting state.
-				# HELP kube_pod_container_status_waiting_reason Describes the reason the container is currently in waiting state.
+				# HELP kube_pod_container_status_waiting [STABLE] Describes whether the container is currently in waiting state.
+				# HELP kube_pod_container_status_waiting_reason [STABLE] Describes the reason the container is currently in waiting state.
 				# TYPE kube_pod_container_status_running gauge
 				# TYPE kube_pod_container_status_terminated gauge
 				# TYPE kube_pod_container_status_terminated_reason gauge
@@ -944,11 +961,11 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-					# HELP kube_pod_container_status_running Describes whether the container is currently in running state.
-					# HELP kube_pod_container_status_terminated Describes whether the container is currently in terminated state.
+					# HELP kube_pod_container_status_running [STABLE] Describes whether the container is currently in running state.
+					# HELP kube_pod_container_status_terminated [STABLE] Describes whether the container is currently in terminated state.
 					# HELP kube_pod_container_status_terminated_reason Describes the reason the container is currently in terminated state.
-					# HELP kube_pod_container_status_waiting Describes whether the container is currently in waiting state.
-					# HELP kube_pod_container_status_waiting_reason Describes the reason the container is currently in waiting state.
+					# HELP kube_pod_container_status_waiting [STABLE] Describes whether the container is currently in waiting state.
+					# HELP kube_pod_container_status_waiting_reason [STABLE] Describes the reason the container is currently in waiting state.
 					# TYPE kube_pod_container_status_running gauge
 					# TYPE kube_pod_container_status_terminated gauge
 					# TYPE kube_pod_container_status_terminated_reason gauge
@@ -1002,12 +1019,12 @@ func TestPodStore(t *testing.T) {
 			},
 			// TODO: Should it be '1501569018' instead?
 			Want: `
-				# HELP kube_pod_completion_time Completion time in unix timestamp for a pod.
-				# HELP kube_pod_created Unix creation timestamp
-				# HELP kube_pod_info Information about pod.
+				# HELP kube_pod_completion_time [STABLE] Completion time in unix timestamp for a pod.
+				# HELP kube_pod_created [STABLE] Unix creation timestamp
+				# HELP kube_pod_info [STABLE] Information about pod.
 				# HELP kube_pod_ips Pod IP addresses
-				# HELP kube_pod_owner Information about the Pod's owner.
-				# HELP kube_pod_start_time Start time in unix timestamp for a pod.
+				# HELP kube_pod_owner [STABLE] Information about the Pod's owner.
+				# HELP kube_pod_start_time [STABLE] Start time in unix timestamp for a pod.
 				# TYPE kube_pod_completion_time gauge
 				# TYPE kube_pod_created gauge
 				# TYPE kube_pod_info gauge
@@ -1061,7 +1078,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_restart_policy Describes the restart policy in use by this pod.
+				# HELP kube_pod_restart_policy [STABLE] Describes the restart policy in use by this pod.
 				# TYPE kube_pod_restart_policy gauge
 				kube_pod_restart_policy{namespace="ns2",pod="pod2",type="Always",uid="uid2"} 1
 				`,
@@ -1079,7 +1096,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_restart_policy Describes the restart policy in use by this pod.
+				# HELP kube_pod_restart_policy [STABLE] Describes the restart policy in use by this pod.
 				# TYPE kube_pod_restart_policy gauge
 				kube_pod_restart_policy{namespace="ns2",pod="pod2",type="OnFailure",uid="uid2"} 1
 				`,
@@ -1163,11 +1180,11 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_completion_time Completion time in unix timestamp for a pod.
-				# HELP kube_pod_created Unix creation timestamp
-				# HELP kube_pod_info Information about pod.
-				# HELP kube_pod_owner Information about the Pod's owner.
-				# HELP kube_pod_start_time Start time in unix timestamp for a pod.
+				# HELP kube_pod_completion_time [STABLE] Completion time in unix timestamp for a pod.
+				# HELP kube_pod_created [STABLE] Unix creation timestamp
+				# HELP kube_pod_info [STABLE] Information about pod.
+				# HELP kube_pod_owner [STABLE] Information about the Pod's owner.
+				# HELP kube_pod_start_time [STABLE] Start time in unix timestamp for a pod.
 				# TYPE kube_pod_completion_time gauge
 				# TYPE kube_pod_created gauge
 				# TYPE kube_pod_info gauge
@@ -1191,7 +1208,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_status_phase The pods current phase.
+				# HELP kube_pod_status_phase [STABLE] The pods current phase.
 				# TYPE kube_pod_status_phase gauge
 				kube_pod_status_phase{namespace="ns1",phase="Failed",pod="pod1",uid="uid1"} 0
 				kube_pod_status_phase{namespace="ns1",phase="Pending",pod="pod1",uid="uid1"} 0
@@ -1213,7 +1230,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_status_phase The pods current phase.
+				# HELP kube_pod_status_phase [STABLE] The pods current phase.
 				# TYPE kube_pod_status_phase gauge
 				kube_pod_status_phase{namespace="ns2",phase="Failed",pod="pod2",uid="uid2"} 0
 				kube_pod_status_phase{namespace="ns2",phase="Pending",pod="pod2",uid="uid2"} 1
@@ -1236,7 +1253,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_status_phase The pods current phase.
+				# HELP kube_pod_status_phase [STABLE] The pods current phase.
 				# TYPE kube_pod_status_phase gauge
 				kube_pod_status_phase{namespace="ns3",phase="Failed",pod="pod3",uid="uid3"} 0
 				kube_pod_status_phase{namespace="ns3",phase="Pending",pod="pod3",uid="uid3"} 0
@@ -1260,7 +1277,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_status_phase The pods current phase.
+				# HELP kube_pod_status_phase [STABLE] The pods current phase.
 				# HELP kube_pod_status_reason The pod status reasons
 				# TYPE kube_pod_status_phase gauge
 				# TYPE kube_pod_status_reason gauge
@@ -1414,7 +1431,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_status_ready Describes whether the pod is ready to serve requests.
+				# HELP kube_pod_status_ready [STABLE] Describes whether the pod is ready to serve requests.
 				# TYPE kube_pod_status_ready gauge
 				kube_pod_status_ready{condition="false",namespace="ns1",pod="pod1",uid="uid1"} 0
 				kube_pod_status_ready{condition="true",namespace="ns1",pod="pod1",uid="uid1"} 1
@@ -1439,7 +1456,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_status_ready Describes whether the pod is ready to serve requests.
+				# HELP kube_pod_status_ready [STABLE] Describes whether the pod is ready to serve requests.
 				# TYPE kube_pod_status_ready gauge
 				kube_pod_status_ready{condition="false",namespace="ns2",pod="pod2",uid="uid2"} 1
 				kube_pod_status_ready{condition="true",namespace="ns2",pod="pod2",uid="uid2"} 0
@@ -1467,8 +1484,8 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_status_scheduled Describes the status of the scheduling process for the pod.
-				# HELP kube_pod_status_scheduled_time Unix timestamp when pod moved into scheduled status
+				# HELP kube_pod_status_scheduled [STABLE] Describes the status of the scheduling process for the pod.
+				# HELP kube_pod_status_scheduled_time [STABLE] Unix timestamp when pod moved into scheduled status
 				# TYPE kube_pod_status_scheduled gauge
 				# TYPE kube_pod_status_scheduled_time gauge
 				kube_pod_status_scheduled_time{namespace="ns1",pod="pod1",uid="uid1"} 1.501666018e+09
@@ -1495,8 +1512,8 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_status_scheduled Describes the status of the scheduling process for the pod.
-				# HELP kube_pod_status_scheduled_time Unix timestamp when pod moved into scheduled status
+				# HELP kube_pod_status_scheduled [STABLE] Describes the status of the scheduling process for the pod.
+				# HELP kube_pod_status_scheduled_time [STABLE] Unix timestamp when pod moved into scheduled status
 				# TYPE kube_pod_status_scheduled gauge
 				# TYPE kube_pod_status_scheduled_time gauge
 				kube_pod_status_scheduled{condition="false",namespace="ns2",pod="pod2",uid="uid2"} 1
@@ -1524,7 +1541,7 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_status_unschedulable Describes the unschedulable status for the pod.
+				# HELP kube_pod_status_unschedulable [STABLE] Describes the unschedulable status for the pod.
 				# TYPE kube_pod_status_unschedulable gauge
 				kube_pod_status_unschedulable{namespace="ns2",pod="pod2",uid="uid2"} 1
 			`,
@@ -1596,8 +1613,8 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_container_resource_limits The number of requested limit resource by a container.
-				# HELP kube_pod_container_resource_requests The number of requested request resource by a container.
+				# HELP kube_pod_container_resource_limits The number of requested limit resource by a container. It is recommended to use the kube_pod_resource_limits metric exposed by kube-scheduler instead, as it is more precise.
+				# HELP kube_pod_container_resource_requests The number of requested request resource by a container. It is recommended to use the kube_pod_resource_requests metric exposed by kube-scheduler instead, as it is more precise.
 				# HELP kube_pod_init_container_resource_limits The number of requested limit resource by an init container.
 				# HELP kube_pod_init_container_resource_requests The number of requested request resource by an init container.
 				# HELP kube_pod_init_container_status_last_terminated_reason Describes the last reason the init container was in terminated state.
@@ -1725,7 +1742,7 @@ func TestPodStore(t *testing.T) {
 				Spec: v1.PodSpec{},
 			},
 			Want: `
-				# HELP kube_pod_labels Kubernetes labels converted to Prometheus labels.
+				# HELP kube_pod_labels [STABLE] Kubernetes labels converted to Prometheus labels.
 				# TYPE kube_pod_labels gauge
 				kube_pod_labels{namespace="ns1",pod="pod1",uid="uid1"} 1
 		`,
@@ -1775,8 +1792,8 @@ func TestPodStore(t *testing.T) {
 				},
 			},
 			Want: `
-				# HELP kube_pod_spec_volumes_persistentvolumeclaims_info Information about persistentvolumeclaim volumes in a pod.
-				# HELP kube_pod_spec_volumes_persistentvolumeclaims_readonly Describes whether a persistentvolumeclaim is mounted read only.
+				# HELP kube_pod_spec_volumes_persistentvolumeclaims_info [STABLE] Information about persistentvolumeclaim volumes in a pod.
+				# HELP kube_pod_spec_volumes_persistentvolumeclaims_readonly [STABLE] Describes whether a persistentvolumeclaim is mounted read only.
 				# TYPE kube_pod_spec_volumes_persistentvolumeclaims_info gauge
 				# TYPE kube_pod_spec_volumes_persistentvolumeclaims_readonly gauge
 				kube_pod_spec_volumes_persistentvolumeclaims_info{namespace="ns1",persistentvolumeclaim="claim1",pod="pod1",volume="myvol",uid="uid1"} 1
@@ -1827,7 +1844,7 @@ func TestPodStore(t *testing.T) {
 			},
 			AllowLabelsList: []string{"wildcard-not-first", options.LabelWildcard},
 			Want: `
-				# HELP kube_pod_labels Kubernetes labels converted to Prometheus labels.
+				# HELP kube_pod_labels [STABLE] Kubernetes labels converted to Prometheus labels.
 				# TYPE kube_pod_labels gauge
 				kube_pod_labels{namespace="ns1",pod="pod1",uid="uid1"} 1
 		`,
@@ -1849,7 +1866,7 @@ func TestPodStore(t *testing.T) {
 			},
 			AllowLabelsList: []string{options.LabelWildcard},
 			Want: `
-				# HELP kube_pod_labels Kubernetes labels converted to Prometheus labels.
+				# HELP kube_pod_labels [STABLE] Kubernetes labels converted to Prometheus labels.
 				# TYPE kube_pod_labels gauge
 				kube_pod_labels{label_app="example",namespace="ns1",pod="pod1",uid="uid1"} 1
 		`,
@@ -2019,7 +2036,8 @@ func BenchmarkPodStore(b *testing.B) {
 					},
 					LastTerminationState: v1.ContainerState{
 						Terminated: &v1.ContainerStateTerminated{
-							Reason: "OOMKilled",
+							Reason:   "OOMKilled",
+							ExitCode: 137,
 						},
 					},
 				},
@@ -2035,7 +2053,8 @@ func BenchmarkPodStore(b *testing.B) {
 					},
 					LastTerminationState: v1.ContainerState{
 						Terminated: &v1.ContainerStateTerminated{
-							Reason: "OOMKilled",
+							Reason:   "OOMKilled",
+							ExitCode: 137,
 						},
 					},
 				},
@@ -2051,7 +2070,8 @@ func BenchmarkPodStore(b *testing.B) {
 					},
 					LastTerminationState: v1.ContainerState{
 						Terminated: &v1.ContainerStateTerminated{
-							Reason: "OOMKilled",
+							Reason:   "OOMKilled",
+							ExitCode: 137,
 						},
 					},
 				},
@@ -2059,7 +2079,7 @@ func BenchmarkPodStore(b *testing.B) {
 		},
 	}
 
-	expectedFamilies := 46
+	expectedFamilies := 47
 	for n := 0; n < b.N; n++ {
 		families := f(pod)
 		if len(families) != expectedFamilies {
