@@ -1032,11 +1032,11 @@ func TestPodStore(t *testing.T) {
 				# TYPE kube_pod_owner gauge
 				# TYPE kube_pod_start_time gauge
 				kube_pod_created{namespace="ns1",pod="pod1",uid="abc-123-xxx"} 1.5e+09
-				kube_pod_info{created_by_kind="<none>",created_by_name="<none>",host_ip="1.1.1.1",namespace="ns1",node="node1",pod="pod1",pod_ip="1.2.3.4",uid="abc-123-xxx",priority_class="system-node-critical",host_network="true"} 1
+				kube_pod_info{created_by_kind="",created_by_name="",host_ip="1.1.1.1",namespace="ns1",node="node1",pod="pod1",pod_ip="1.2.3.4",uid="abc-123-xxx",priority_class="system-node-critical",host_network="true"} 1
 				kube_pod_ips{namespace="ns1",pod="pod1",uid="abc-123-xxx",ip="1.2.3.4",ip_family="4"} 1
 				kube_pod_ips{namespace="ns1",pod="pod1",uid="abc-123-xxx",ip="fc00:1234:5678:90ab:cdef:cafe:f00d:d00d",ip_family="6"} 1
 				kube_pod_start_time{namespace="ns1",pod="pod1",uid="abc-123-xxx"} 1.501569018e+09
-				kube_pod_owner{namespace="ns1",owner_is_controller="<none>",owner_kind="<none>",owner_name="<none>",pod="pod1",uid="abc-123-xxx"} 1
+				kube_pod_owner{namespace="ns1",owner_is_controller="",owner_kind="",owner_name="",pod="pod1",uid="abc-123-xxx"} 1
 `,
 			MetricNames: []string{"kube_pod_created", "kube_pod_info", "kube_pod_ips", "kube_pod_start_time", "kube_pod_completion_time", "kube_pod_owner"},
 		},
@@ -1297,6 +1297,26 @@ func TestPodStore(t *testing.T) {
 		{
 			Obj: &v1.Pod{
 				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod1",
+					Namespace: "ns1",
+					UID:       "uid1",
+				},
+				Status: v1.PodStatus{
+					QOSClass: v1.PodQOSBestEffort,
+				},
+			},
+			Want: `
+				# HELP kube_pod_status_qos_class The pods current qosClass.
+				# TYPE kube_pod_status_qos_class gauge
+				kube_pod_status_qos_class{namespace="ns1",qos_class="BestEffort",pod="pod1",uid="uid1"} 1
+				kube_pod_status_qos_class{namespace="ns1",qos_class="Burstable",pod="pod1",uid="uid1"} 0
+				kube_pod_status_qos_class{namespace="ns1",qos_class="Guaranteed",pod="pod1",uid="uid1"} 0
+`,
+			MetricNames: []string{"kube_pod_status_qos_class"},
+		},
+		{
+			Obj: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:              "pod4",
 					Namespace:         "ns4",
 					UID:               "uid4",
@@ -1424,20 +1444,77 @@ func TestPodStore(t *testing.T) {
 				Status: v1.PodStatus{
 					Conditions: []v1.PodCondition{
 						{
+							Type:   v1.ContainersReady,
+							Status: v1.ConditionTrue,
+							LastTransitionTime: metav1.Time{
+								Time: time.Unix(1501666018, 0),
+							},
+						},
+					},
+				},
+			},
+			Want: `
+				# HELP kube_pod_status_container_ready_time Readiness achieved time in unix timestamp for a pod containers.
+				# TYPE kube_pod_status_container_ready_time gauge
+				kube_pod_status_container_ready_time{namespace="ns1",pod="pod1",uid="uid1"} 1.501666018e+09
+			`,
+			MetricNames: []string{"kube_pod_status_container_ready_time"},
+		},
+		{
+			Obj: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod1",
+					Namespace: "ns1",
+					UID:       "uid1",
+				},
+				Status: v1.PodStatus{
+					Conditions: []v1.PodCondition{
+						{
+							Type:   v1.ContainersReady,
+							Status: v1.ConditionFalse,
+							LastTransitionTime: metav1.Time{
+								Time: time.Unix(1501666018, 0),
+							},
+						},
+					},
+				},
+			},
+			Want: `
+				# HELP kube_pod_status_container_ready_time Readiness achieved time in unix timestamp for a pod containers.
+				# TYPE kube_pod_status_container_ready_time gauge
+			`,
+			MetricNames: []string{"kube_pod_status_container_ready_time"},
+		},
+		{
+			Obj: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod1",
+					Namespace: "ns1",
+					UID:       "uid1",
+				},
+				Status: v1.PodStatus{
+					Conditions: []v1.PodCondition{
+						{
 							Type:   v1.PodReady,
 							Status: v1.ConditionTrue,
+							LastTransitionTime: metav1.Time{
+								Time: time.Unix(1501666018, 0),
+							},
 						},
 					},
 				},
 			},
 			Want: `
 				# HELP kube_pod_status_ready [STABLE] Describes whether the pod is ready to serve requests.
+				# HELP kube_pod_status_ready_time Readiness achieved time in unix timestamp for a pod.
 				# TYPE kube_pod_status_ready gauge
+				# TYPE kube_pod_status_ready_time gauge
+				kube_pod_status_ready_time{namespace="ns1",pod="pod1",uid="uid1"} 1.501666018e+09
 				kube_pod_status_ready{condition="false",namespace="ns1",pod="pod1",uid="uid1"} 0
 				kube_pod_status_ready{condition="true",namespace="ns1",pod="pod1",uid="uid1"} 1
 				kube_pod_status_ready{condition="unknown",namespace="ns1",pod="pod1",uid="uid1"} 0
 			`,
-			MetricNames: []string{"kube_pod_status_ready"},
+			MetricNames: []string{"kube_pod_status_ready_time", "kube_pod_status_ready"},
 		},
 		{
 			Obj: &v1.Pod{
@@ -1451,18 +1528,23 @@ func TestPodStore(t *testing.T) {
 						{
 							Type:   v1.PodReady,
 							Status: v1.ConditionFalse,
+							LastTransitionTime: metav1.Time{
+								Time: time.Unix(1501666018, 0),
+							},
 						},
 					},
 				},
 			},
 			Want: `
 				# HELP kube_pod_status_ready [STABLE] Describes whether the pod is ready to serve requests.
+				# HELP kube_pod_status_ready_time Readiness achieved time in unix timestamp for a pod.
 				# TYPE kube_pod_status_ready gauge
+				# TYPE kube_pod_status_ready_time gauge
 				kube_pod_status_ready{condition="false",namespace="ns2",pod="pod2",uid="uid2"} 1
 				kube_pod_status_ready{condition="true",namespace="ns2",pod="pod2",uid="uid2"} 0
 				kube_pod_status_ready{condition="unknown",namespace="ns2",pod="pod2",uid="uid2"} 0
 			`,
-			MetricNames: []string{"kube_pod_status_ready"},
+			MetricNames: []string{"kube_pod_status_ready_time", "kube_pod_status_ready"},
 		},
 		{
 			Obj: &v1.Pod{
@@ -2079,7 +2161,7 @@ func BenchmarkPodStore(b *testing.B) {
 		},
 	}
 
-	expectedFamilies := 47
+	expectedFamilies := 50
 	for n := 0; n < b.N; n++ {
 		families := f(pod)
 		if len(families) != expectedFamilies {

@@ -43,6 +43,8 @@ import (
 	samplev1alpha1 "k8s.io/sample-controller/pkg/apis/samplecontroller/v1alpha1"
 	samplefake "k8s.io/sample-controller/pkg/generated/clientset/versioned/fake"
 
+	basemetrics "k8s.io/component-base/metrics"
+
 	"k8s.io/kube-state-metrics/v2/internal/store"
 	"k8s.io/kube-state-metrics/v2/pkg/allowdenylist"
 	"k8s.io/kube-state-metrics/v2/pkg/customresource"
@@ -238,7 +240,10 @@ func TestFullScrapeCycle(t *testing.T) {
 # HELP kube_pod_spec_volumes_persistentvolumeclaims_info [STABLE] Information about persistentvolumeclaim volumes in a pod.
 # HELP kube_pod_spec_volumes_persistentvolumeclaims_readonly [STABLE] Describes whether a persistentvolumeclaim is mounted read only.
 # HELP kube_pod_start_time [STABLE] Start time in unix timestamp for a pod.
+# HELP kube_pod_status_container_ready_time Readiness achieved time in unix timestamp for a pod containers.
+# HELP kube_pod_status_qos_class The pods current qosClass.
 # HELP kube_pod_status_phase [STABLE] The pods current phase.
+# HELP kube_pod_status_ready_time Readiness achieved time in unix timestamp for a pod.
 # HELP kube_pod_status_ready [STABLE] Describes whether the pod is ready to serve requests.
 # HELP kube_pod_status_reason The pod status reasons
 # HELP kube_pod_status_scheduled [STABLE] Describes the status of the scheduling process for the pod.
@@ -284,8 +289,11 @@ func TestFullScrapeCycle(t *testing.T) {
 # TYPE kube_pod_spec_volumes_persistentvolumeclaims_info gauge
 # TYPE kube_pod_spec_volumes_persistentvolumeclaims_readonly gauge
 # TYPE kube_pod_start_time gauge
+# TYPE kube_pod_status_container_ready_time gauge
 # TYPE kube_pod_status_phase gauge
+# TYPE kube_pod_status_qos_class gauge
 # TYPE kube_pod_status_ready gauge
+# TYPE kube_pod_status_ready_time gauge
 # TYPE kube_pod_status_reason gauge
 # TYPE kube_pod_status_scheduled gauge
 # TYPE kube_pod_status_scheduled_time gauge
@@ -322,9 +330,9 @@ kube_pod_container_status_waiting_reason{namespace="default",pod="pod0",uid="abc
 kube_pod_container_status_waiting{namespace="default",pod="pod0",uid="abc-0",container="pod1_con1"} 1
 kube_pod_container_status_waiting{namespace="default",pod="pod0",uid="abc-0",container="pod1_con2"} 0
 kube_pod_created{namespace="default",pod="pod0",uid="abc-0"} 1.5e+09
-kube_pod_info{namespace="default",pod="pod0",uid="abc-0",host_ip="1.1.1.1",pod_ip="1.2.3.4",node="node1",created_by_kind="<none>",created_by_name="<none>",priority_class="",host_network="false"} 1
+kube_pod_info{namespace="default",pod="pod0",uid="abc-0",host_ip="1.1.1.1",pod_ip="1.2.3.4",node="node1",created_by_kind="",created_by_name="",priority_class="",host_network="false"} 1
 kube_pod_labels{namespace="default",pod="pod0",uid="abc-0"} 1
-kube_pod_owner{namespace="default",pod="pod0",uid="abc-0",owner_kind="<none>",owner_name="<none>",owner_is_controller="<none>"} 1
+kube_pod_owner{namespace="default",pod="pod0",uid="abc-0",owner_kind="",owner_name="",owner_is_controller=""} 1
 kube_pod_restart_policy{namespace="default",pod="pod0",uid="abc-0",type="Always"} 1
 kube_pod_status_phase{namespace="default",pod="pod0",uid="abc-0",phase="Failed"} 0
 kube_pod_status_phase{namespace="default",pod="pod0",uid="abc-0",phase="Pending"} 0
@@ -885,10 +893,11 @@ func (f *fooFactory) CreateClient(cfg *rest.Config) (interface{}, error) {
 
 func (f *fooFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabelsList []string) []generator.FamilyGenerator {
 	return []generator.FamilyGenerator{
-		*generator.NewFamilyGenerator(
+		*generator.NewFamilyGeneratorWithStability(
 			"kube_foo_spec_replicas",
 			"Number of desired replicas for a foo.",
 			metric.Gauge,
+			basemetrics.ALPHA,
 			"",
 			wrapFooFunc(func(f *samplev1alpha1.Foo) *metric.Family {
 				return &metric.Family{
@@ -900,10 +909,11 @@ func (f *fooFactory) MetricFamilyGenerators(allowAnnotationsList, allowLabelsLis
 				}
 			}),
 		),
-		*generator.NewFamilyGenerator(
+		*generator.NewFamilyGeneratorWithStability(
 			"kube_foo_status_replicas_available",
 			"The number of available replicas per foo.",
 			metric.Gauge,
+			basemetrics.ALPHA,
 			"",
 			wrapFooFunc(func(f *samplev1alpha1.Foo) *metric.Family {
 				return &metric.Family{

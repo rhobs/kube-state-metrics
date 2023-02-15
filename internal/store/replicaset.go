@@ -178,7 +178,7 @@ func replicaSetMetricFamilies(allowAnnotationsList, allowLabelsList []string) []
 						Metrics: []*metric.Metric{
 							{
 								LabelKeys:   []string{"owner_kind", "owner_name", "owner_is_controller"},
-								LabelValues: []string{"<none>", "<none>", "<none>"},
+								LabelValues: []string{"", "", ""},
 								Value:       1,
 							},
 						},
@@ -209,10 +209,11 @@ func replicaSetMetricFamilies(allowAnnotationsList, allowLabelsList []string) []
 				}
 			}),
 		),
-		*generator.NewFamilyGenerator(
+		*generator.NewFamilyGeneratorWithStability(
 			descReplicaSetAnnotationsName,
 			descReplicaSetAnnotationsHelp,
 			metric.Gauge,
+			basemetrics.ALPHA,
 			"",
 			wrapReplicaSetFunc(func(r *v1.ReplicaSet) *metric.Family {
 				annotationKeys, annotationValues := createPrometheusLabelKeysValues("annotation", r.Annotations, allowAnnotationsList)

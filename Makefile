@@ -15,8 +15,8 @@ GIT_COMMIT ?= $(shell git rev-parse --short HEAD)
 OS ?= $(shell uname -s | tr A-Z a-z)
 ALL_ARCH = amd64 arm arm64 ppc64le s390x
 PKG = github.com/prometheus/common
-PROMETHEUS_VERSION = 2.39.1
-GO_VERSION = 1.19.3
+PROMETHEUS_VERSION = 2.40.6
+GO_VERSION = 1.19.4
 IMAGE = $(REGISTRY)/kube-state-metrics
 MULTI_ARCH_IMG = $(IMAGE)-$(ARCH)
 USER ?= $(shell id -u -n)
@@ -43,6 +43,9 @@ licensecheck:
 
 lint: shellcheck licensecheck
 	golangci-lint run
+
+lint-fix:
+	golangci-lint run --fix -v
 
 doccheck: generate
 	@echo "- Checking if the generated documentation is up to date..."
@@ -78,7 +81,7 @@ shellcheck:
 # the two.
 test-benchmark-compare:
 	@git fetch
-	./tests/compare_benchmarks.sh master
+	./tests/compare_benchmarks.sh main
 	./tests/compare_benchmarks.sh ${LATEST_RELEASE_BRANCH}
 
 all: all-container
@@ -147,11 +150,11 @@ scripts/vendor: scripts/jsonnetfile.json scripts/jsonnetfile.lock.json
 
 install-tools:
 	@echo Installing tools from tools.go
-	@cat tools/tools.go | grep _ | awk -F'"' '{print $$2}' | xargs -tI % go install %
+	grep '^\s*_' tools/tools.go | awk '{print $$2}' | xargs -tI % go install -mod=readonly -modfile=tools/go.mod %
 
 install-promtool:
 	@echo Installing promtool
 	@wget -qO- "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.${OS}-${ARCH}.tar.gz" |\
 	tar xvz --strip-components=1 prometheus-${PROMETHEUS_VERSION}.${OS}-${ARCH}/promtool
 
-.PHONY: all build build-local all-push all-container container container-* do-push-* sub-push-* push push-multi-arch test-unit test-rules test-benchmark-compare clean e2e validate-modules shellcheck licensecheck lint generate embedmd
+.PHONY: all build build-local all-push all-container container container-* do-push-* sub-push-* push push-multi-arch test-unit test-rules test-benchmark-compare clean e2e validate-modules shellcheck licensecheck lint lint-fix generate embedmd
