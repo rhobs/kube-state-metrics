@@ -18,13 +18,17 @@ package app
 
 import (
 	"context"
+	"crypto/md5" //nolint:gosec
+	"encoding/binary"
 	"fmt"
 	"net"
 	"net/http"
 	"net/http/pprof"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -45,6 +49,7 @@ import (
 	"k8s.io/kube-state-metrics/v2/internal/store"
 	"k8s.io/kube-state-metrics/v2/pkg/allowdenylist"
 	"k8s.io/kube-state-metrics/v2/pkg/customresource"
+	"k8s.io/kube-state-metrics/v2/pkg/customresourcestate"
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
 	"k8s.io/kube-state-metrics/v2/pkg/metricshandler"
 	"k8s.io/kube-state-metrics/v2/pkg/optin"
@@ -71,8 +76,8 @@ func (pl promLogger) Log(v ...interface{}) error {
 }
 
 // RunKubeStateMetricsWrapper runs KSM with context cancellation.
-func RunKubeStateMetricsWrapper(ctx context.Context, opts *options.Options, factories ...customresource.RegistryFactory) error {
-	err := RunKubeStateMetrics(ctx, opts, factories...)
+func RunKubeStateMetricsWrapper(ctx context.Context, opts *options.Options) error {
+	err := RunKubeStateMetrics(ctx, opts)
 	if ctx.Err() == context.Canceled {
 		klog.Infoln("Restarting: kube-state-metrics, metrics will be reset")
 		return nil
@@ -83,11 +88,10 @@ func RunKubeStateMetricsWrapper(ctx context.Context, opts *options.Options, fact
 // RunKubeStateMetrics will build and run the kube-state-metrics.
 // Any out-of-tree custom resource metrics could be registered by newing a registry factory
 // which implements customresource.RegistryFactory and pass all factories into this function.
-func RunKubeStateMetrics(ctx context.Context, opts *options.Options, factories ...customresource.RegistryFactory) error {
+func RunKubeStateMetrics(ctx context.Context, opts *options.Options) error {
 	promLogger := promLogger{}
 
 	storeBuilder := store.NewBuilder()
-	storeBuilder.WithCustomResourceStoreFactories(factories...)
 
 	ksmMetricsRegistry := prometheus.NewRegistry()
 	ksmMetricsRegistry.MustRegister(version.NewCollector("kube_state_metrics"))
@@ -99,44 +103,93 @@ func RunKubeStateMetrics(ctx context.Context, opts *options.Options, factories .
 			ConstLabels: prometheus.Labels{"handler": "metrics"},
 		}, []string{"method"},
 	)
+	configHash := promauto.With(ksmMetricsRegistry).NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "kube_state_metrics_config_hash",
+			Help: "Hash of the currently loaded configuration.",
+		}, []string{"type", "filename"})
+	configSuccess := promauto.With(ksmMetricsRegistry).NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "kube_state_metrics_last_config_reload_successful",
+			Help: "Whether the last configuration reload attempt was successful.",
+		}, []string{"type", "filename"})
+	configSuccessTime := promauto.With(ksmMetricsRegistry).NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "kube_state_metrics_last_config_reload_success_timestamp_seconds",
+			Help: "Timestamp of the last successful configuration reload.",
+		}, []string{"type", "filename"})
+
 	storeBuilder.WithMetrics(ksmMetricsRegistry)
 
-	got := options.GetOptsConfigFile(*opts)
+	got := options.GetConfigFile(*opts)
 	if got != "" {
-		optsConfigFile, err := os.ReadFile(filepath.Clean(got))
+		configFile, err := os.ReadFile(filepath.Clean(got))
 		if err != nil {
 			return fmt.Errorf("failed to read opts config file: %v", err)
 		}
 		// NOTE: Config value will override default values of intersecting options.
-		err = yaml.Unmarshal(optsConfigFile, opts)
+		err = yaml.Unmarshal(configFile, opts)
 		if err != nil {
 			// DO NOT end the process.
 			// We want to allow the user to still be able to fix the misconfigured config (redeploy or edit the configmaps) and reload KSM automatically once that's done.
-			klog.Warningf("failed to unmarshal opts config file: %v", err)
+			klog.ErrorS(err, "failed to unmarshal opts config file")
 			// Wait for the next reload.
-			klog.Infof("misconfigured config detected, KSM will automatically reload on next write to the config")
-			klog.Infof("waiting for config to be fixed")
+			klog.InfoS("misconfigured config detected, KSM will automatically reload on next write to the config")
+			klog.InfoS("waiting for config to be fixed")
+			configSuccess.WithLabelValues("config", filepath.Clean(got)).Set(0)
 			<-ctx.Done()
+		} else {
+			configSuccess.WithLabelValues("config", filepath.Clean(got)).Set(1)
+			configSuccessTime.WithLabelValues("config", filepath.Clean(got)).SetToCurrentTime()
+			hash := md5HashAsMetricValue(configFile)
+			configHash.WithLabelValues("config", filepath.Clean(got)).Set(hash)
 		}
 	}
-	var resources []string
+
+	// Loading custom resource state configuration from cli argument or config file
+	config, err := resolveCustomResourceConfig(opts)
+	if err != nil {
+		return err
+	}
+
+	var factories []customresource.RegistryFactory
+
+	if config != nil {
+		factories, err = customresourcestate.FromConfig(config)
+		if err != nil {
+			return fmt.Errorf("Parsing from Custom Resource State Metrics file failed: %v", err)
+		}
+	}
+	storeBuilder.WithCustomResourceStoreFactories(factories...)
+
+	if opts.CustomResourceConfigFile != "" {
+		crcFile, err := os.ReadFile(filepath.Clean(opts.CustomResourceConfigFile))
+		if err != nil {
+			return fmt.Errorf("failed to read custom resource config file: %v", err)
+		}
+		configSuccess.WithLabelValues("customresourceconfig", filepath.Clean(opts.CustomResourceConfigFile)).Set(1)
+		configSuccessTime.WithLabelValues("customresourceconfig", filepath.Clean(opts.CustomResourceConfigFile)).SetToCurrentTime()
+		hash := md5HashAsMetricValue(crcFile)
+		configHash.WithLabelValues("customresourceconfig", filepath.Clean(opts.CustomResourceConfigFile)).Set(hash)
+
+	}
+
+	resources := make([]string, len(factories))
+
+	for i, factory := range factories {
+		resources[i] = factory.Name()
+	}
+
 	switch {
 	case len(opts.Resources) == 0 && !opts.CustomResourcesOnly:
+		resources = append(resources, options.DefaultResources.AsSlice()...)
 		klog.InfoS("Used default resources")
-		resources = options.DefaultResources.AsSlice()
-		// enable custom resource
-		for _, factory := range factories {
-			resources = append(resources, factory.Name())
-		}
 	case opts.CustomResourcesOnly:
 		// enable custom resource only
-		for _, factory := range factories {
-			resources = append(resources, factory.Name())
-		}
 		klog.InfoS("Used CRD resources only", "resources", resources)
 	default:
-		klog.InfoS("Used resources", "resources", opts.Resources.String())
-		resources = opts.Resources.AsSlice()
+		resources = append(resources, opts.Resources.AsSlice()...)
+		klog.InfoS("Used resources", "resources", resources)
 	}
 
 	if err := storeBuilder.WithEnabledResources(resources); err != nil {
@@ -282,7 +335,7 @@ func createKubeClient(apiserver string, kubeconfig string, factories ...customre
 		return nil, nil, nil, err
 	}
 
-	config.UserAgent = version.Version
+	config.UserAgent = fmt.Sprintf("%s/%s (%s/%s) kubernetes/%s", "kube-state-metrics", version.Version, runtime.GOOS, runtime.GOARCH, version.Revision)
 	config.AcceptContentTypes = "application/vnd.kubernetes.protobuf,application/json"
 	config.ContentType = "application/vnd.kubernetes.protobuf"
 
@@ -370,4 +423,29 @@ func buildMetricsServer(m *metricshandler.MetricsHandler, durationObserver prome
              </html>`))
 	})
 	return mux
+}
+
+// md5HashAsMetricValue creates an md5 hash and returns the most significant bytes that fit into a float64
+// Taken from https://github.com/prometheus/alertmanager/blob/6ef6e6868dbeb7984d2d577dd4bf75c65bf1904f/config/coordinator.go#L149
+func md5HashAsMetricValue(data []byte) float64 {
+	sum := md5.Sum(data) //nolint:gosec
+	// We only want 48 bits as a float64 only has a 53 bit mantissa.
+	smallSum := sum[0:6]
+	bytes := make([]byte, 8)
+	copy(bytes, smallSum)
+	return float64(binary.LittleEndian.Uint64(bytes))
+}
+
+func resolveCustomResourceConfig(opts *options.Options) (customresourcestate.ConfigDecoder, error) {
+	if s := opts.CustomResourceConfig; s != "" {
+		return yaml.NewDecoder(strings.NewReader(s)), nil
+	}
+	if file := opts.CustomResourceConfigFile; file != "" {
+		f, err := os.Open(filepath.Clean(file))
+		if err != nil {
+			return nil, fmt.Errorf("Custom Resource State Metrics file could not be opened: %v", err)
+		}
+		return yaml.NewDecoder(f), nil
+	}
+	return nil, nil
 }

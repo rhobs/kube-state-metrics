@@ -49,7 +49,41 @@ spec:
           - --resources=certificatesigningrequests,configmaps,cronjobs,daemonsets,deployments,endpoints,foos,horizontalpodautoscalers,ingresses,jobs,limitranges,mutatingwebhookconfigurations,namespaces,networkpolicies,nodes,persistentvolumeclaims,persistentvolumes,poddisruptionbudgets,pods,replicasets,replicationcontrollers,resourcequotas,secrets,services,statefulsets,storageclasses,validatingwebhookconfigurations,volumeattachments,verticalpodautoscalers
 ```
 
-NOTE: The `group`, `version`, and `kind` common labels are reserved, and will be overwritten by the values from the `groupVersionKind` field.
+It's also possible to configure kube-state-metrics to run in a `custom-resource-mode` only. In addition to specifying one of `--custom-resource-state-config*` flags, you could set `--custom-resource-state-only` to `true`.
+With this configuration only the known custom resources configured in `--custom-resource-state-config*` will be taken into account by kube-state-metrics.
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-state-metrics
+  namespace: kube-system
+spec:
+  template:
+    spec:
+      containers:
+      - name: kube-state-metrics
+        args:
+          - --custom-resource-state-config
+          # in YAML files, | allows a multi-line string to be passed as a flag value
+          # see https://yaml-multiline.info
+          -  |
+              spec:
+                resources:
+                  - groupVersionKind:
+                      group: myteam.io
+                      version: "v1"
+                      kind: Foo
+                    metrics:
+                      - name: active_count
+                        help: "Count of active Foo"
+                        each:
+                          type: Gauge
+                          ...
+          - --custom-resource-state-only=true
+```
+
+NOTE: The `customresource_group`, `customresource_version`, and `customresource_kind` common labels are reserved, and will be overwritten by the values from the `groupVersionKind` field.
 
 ### Examples
 
@@ -117,7 +151,7 @@ spec:
 Produces the metric:
 
 ```prometheus
-kube_crd_uptime{group="myteam.io", kind="Foo", version="v1"} 43.21
+kube_customresource_uptime{customresource_group="myteam.io", customresource_kind="Foo", customresource_version="v1"} 43.21
 ```
 
 #### Multiple Metrics/Kitchen Sink
@@ -169,8 +203,8 @@ spec:
 Produces the following metrics:
 
 ```prometheus
-kube_crd_ready_count{group="myteam.io", kind="Foo", version="v1", active="1",custom_metric="yes",foo="bar",name="foo",bar="baz",qux="quxx",type="type-a"} 2
-kube_crd_ready_count{group="myteam.io", kind="Foo", version="v1", active="3",custom_metric="yes",foo="bar",name="foo",bar="baz",qux="quxx",type="type-b"} 4
+kube_customresource_ready_count{customresource_group="myteam.io", customresource_kind="Foo", customresource_version="v1", active="1",custom_metric="yes",foo="bar",name="foo",bar="baz",qux="quxx",type="type-a"} 2
+kube_customresource_ready_count{customresource_group="myteam.io", customresource_kind="Foo", customresource_version="v1", active="3",custom_metric="yes",foo="bar",name="foo",bar="baz",qux="quxx",type="type-b"} 4
 ```
 
 ### Metric types
@@ -205,8 +239,63 @@ spec:
 Produces the metric:
 
 ```prometheus
-kube_crd_uptime{group="myteam.io", kind="Foo", version="v1"} 43.21
+kube_customresource_uptime{customresource_group="myteam.io", customresource_kind="Foo", customresource_version="v1"} 43.21
 ```
+
+##### Type conversion and special handling
+
+Gauges produce values of type float64 but custom resources can be of all kinds of types.
+Kube-state-metrics performs implicity type conversions for a lot of type.
+Supported types are:
+
+* (u)int32/64, int, float32 and byte are cast to float64
+* `nil` is generally mapped to `0.0` if NilIsZero is `true`. Otherwise it yields an error
+* for bool `true` is mapped to `1.0` and `false` is mapped to `0.0`
+* for string the following logic applies
+  * `"true"` and `"yes"` are mapped to `1.0` and `"false"` and `"no"` are mapped to `0.0` (all case insensitive)
+  * RFC3339 times are parsed to float timestamp  
+  * finally the string is parsed to float using https://pkg.go.dev/strconv#ParseFloat which should support all common number formats. If that fails an error is yielded
+
+##### Example for status conditions on Kubernetes Controllers
+
+```yaml
+kind: CustomResourceStateMetrics
+spec:
+  resources:
+  - groupVersionKind:
+      group: myteam.io
+      kind: "Foo"
+      version: "v1"
+    labelsFromPath:
+      name:
+      - metadata
+      - name
+      namespace:
+      - metadata
+      - namespace
+    metrics:
+    - name: "foo_status"
+      help: "status condition "
+      each:
+        type: Gauge
+        gauge:
+          path: [status, conditions]
+          labelsFromPath:
+            type: ["type"]
+          valueFrom: ["status"]
+```
+
+This will work for kubernetes controller CRs which expose status conditions according to the kubernetes api (https://pkg.go.dev/k8s.io/apimachinery/pkg/apis/meta/v1#Condition):
+
+```yaml
+status:
+  conditions:
+    - lastTransitionTime: "2019-10-22T16:29:31Z"
+      status: "True"
+      type: Ready
+```
+
+kube_customresource_foo_status{customresource_group="myteam.io", customresource_kind="Foo", customresource_version="v1", type="Ready"} 1.0
 
 #### StateSet
 
@@ -237,9 +326,9 @@ The value will be 1, if the value matches the one in list.
 Produces the metric:
 
 ```prometheus
-kube_crd_status_phase{group="myteam.io", kind="Foo", version="v1", phase="Pending"} 1
-kube_crd_status_phase{group="myteam.io", kind="Foo", version="v1", phase="Bar"} 0
-kube_crd_status_phase{group="myteam.io", kind="Foo", version="v1", phase="Baz"} 0
+kube_customresource_status_phase{customresource_group="myteam.io", customresource_kind="Foo", customresource_version="v1", phase="Pending"} 1
+kube_customresource_status_phase{customresource_group="myteam.io", customresource_kind="Foo", customresource_version="v1", phase="Bar"} 0
+kube_customresource_status_phase{customresource_group="myteam.io", customresource_kind="Foo", customresource_version="v1", phase="Baz"} 0
 ```
 
 #### Info
@@ -269,7 +358,7 @@ spec:
 Produces the metric:
 
 ```prometheus
-kube_crd_version{group="myteam.io", kind="Foo", version="v1", version="v1.2.3"} 1
+kube_customresource_version{customresource_group="myteam.io", customresource_kind="Foo", customresource_version="v1", version="v1.2.3"} 1
 ```
 
 ### Naming
@@ -291,7 +380,7 @@ spec:
 
 Produces:
 ```prometheus
-myteam_foos_uptime{group="myteam.io", kind="Foo", version="v1"} 43.21
+myteam_foos_uptime{customresource_group="myteam.io", customresource_kind="Foo", customresource_version="v1"} 43.21
 ```
 
 To omit namespace and/or subsystem altogether, set them to the empty string:
@@ -309,7 +398,7 @@ spec:
 
 Produces:
 ```prometheus
-uptime{group="myteam.io", kind="Foo", version="v1"} 43.21
+uptime{customresource_group="myteam.io", customresource_kind="Foo", customresource_version="v1"} 43.21
 ```
 
 ### Logging

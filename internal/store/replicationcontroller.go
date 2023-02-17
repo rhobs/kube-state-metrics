@@ -172,10 +172,11 @@ var (
 				}
 			}),
 		),
-		*generator.NewFamilyGenerator(
+		*generator.NewFamilyGeneratorWithStability(
 			"kube_replicationcontroller_owner",
 			"Information about the ReplicationController's owner.",
 			metric.Gauge,
+			basemetrics.ALPHA,
 			"",
 			wrapReplicationControllerFunc(func(r *v1.ReplicationController) *metric.Family {
 				labelKeys := []string{"owner_kind", "owner_name", "owner_is_controller"}
@@ -185,7 +186,7 @@ var (
 				if len(owners) == 0 {
 					ms = append(ms, &metric.Metric{
 						LabelKeys:   labelKeys,
-						LabelValues: []string{"<none>", "<none>", "<none>"},
+						LabelValues: []string{"", "", ""},
 						Value:       1,
 					})
 				} else {

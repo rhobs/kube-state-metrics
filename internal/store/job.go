@@ -44,10 +44,11 @@ var (
 
 func jobMetricFamilies(allowAnnotationsList, allowLabelsList []string) []generator.FamilyGenerator {
 	return []generator.FamilyGenerator{
-		*generator.NewFamilyGenerator(
+		*generator.NewFamilyGeneratorWithStability(
 			descJobAnnotationsName,
 			descJobAnnotationsHelp,
 			metric.Gauge,
+			basemetrics.ALPHA,
 			"",
 			wrapJobFunc(func(j *v1batch.Job) *metric.Family {
 				annotationKeys, annotationValues := createPrometheusLabelKeysValues("annotation", j.Annotations, allowAnnotationsList)
@@ -364,7 +365,7 @@ func jobMetricFamilies(allowAnnotationsList, allowLabelsList []string) []generat
 						Metrics: []*metric.Metric{
 							{
 								LabelKeys:   labelKeys,
-								LabelValues: []string{"<none>", "<none>", "<none>"},
+								LabelValues: []string{"", "", ""},
 								Value:       1,
 							},
 						},
