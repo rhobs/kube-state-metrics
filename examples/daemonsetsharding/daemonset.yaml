@@ -1,34 +1,42 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   labels:
     app.kubernetes.io/component: exporter
-    app.kubernetes.io/name: kube-state-metrics
+    app.kubernetes.io/name: kube-state-metrics-shard
     app.kubernetes.io/version: 2.9.2
-  name: kube-state-metrics
+  name: kube-state-metrics-shard
   namespace: kube-system
 spec:
-  replicas: 1
   selector:
     matchLabels:
-      app.kubernetes.io/name: kube-state-metrics
+      app.kubernetes.io/name: kube-state-metrics-shard
   template:
     metadata:
       labels:
         app.kubernetes.io/component: exporter
-        app.kubernetes.io/name: kube-state-metrics
+        app.kubernetes.io/name: kube-state-metrics-shard
         app.kubernetes.io/version: 2.9.2
     spec:
       automountServiceAccountToken: true
       containers:
-      - image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.9.2
+      - args:
+        - --resources=pods
+        - --node=$(NODE_NAME)
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              apiVersion: v1
+              fieldPath: spec.nodeName
+        image: registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.9.2
         livenessProbe:
           httpGet:
             path: /healthz
             port: 8080
           initialDelaySeconds: 5
           timeoutSeconds: 5
-        name: kube-state-metrics
+        name: kube-state-metrics-shard
         ports:
         - containerPort: 8080
           name: http-metrics

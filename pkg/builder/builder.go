@@ -20,7 +20,6 @@ import (
 	"context"
 
 	"github.com/prometheus/client_golang/prometheus"
-	vpaclientset "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/client/clientset/versioned"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
 
@@ -85,11 +84,6 @@ func (b *Builder) WithKubeClient(c clientset.Interface) {
 	b.internal.WithKubeClient(c)
 }
 
-// WithVPAClient sets the vpaClient property of a Builder so that the verticalpodautoscaler collector can query VPA objects.
-func (b *Builder) WithVPAClient(c vpaclientset.Interface) {
-	b.internal.WithVPAClient(c)
-}
-
 // WithCustomResourceClients sets the customResourceClients property of a Builder.
 func (b *Builder) WithCustomResourceClients(cs map[string]interface{}) {
 	b.internal.WithCustomResourceClients(cs)
@@ -121,11 +115,6 @@ func (b *Builder) WithGenerateStoresFunc(f ksmtypes.BuildStoresFunc) {
 	b.internal.WithGenerateStoresFunc(f)
 }
 
-// WithGenerateCustomResourceStoresFunc configures a custom generate custom resource store function
-func (b *Builder) WithGenerateCustomResourceStoresFunc(f ksmtypes.BuildCustomResourceStoresFunc) {
-	b.internal.WithGenerateCustomResourceStoresFunc(f)
-}
-
 // DefaultGenerateStoresFunc returns default buildStore function
 func (b *Builder) DefaultGenerateStoresFunc() ksmtypes.BuildStoresFunc {
 	return b.internal.DefaultGenerateStoresFunc()
@@ -151,4 +140,9 @@ func (b *Builder) Build() metricsstore.MetricsWriterList {
 // Returns metric stores.
 func (b *Builder) BuildStores() [][]cache.Store {
 	return b.internal.BuildStores()
+}
+
+// WithGenerateCustomResourceStoresFunc configures a custom generate custom resource store function
+func (b *Builder) WithGenerateCustomResourceStoresFunc(f ksmtypes.BuildCustomResourceStoresFunc) {
+	b.internal.WithGenerateCustomResourceStoresFunc(f)
 }
