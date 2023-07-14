@@ -25,9 +25,12 @@ import (
 	"strings"
 	"time"
 
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/klog/v2"
 
+	"k8s.io/kube-state-metrics/v2/internal/store"
 	"k8s.io/kube-state-metrics/v2/pkg/metric"
 	generator "k8s.io/kube-state-metrics/v2/pkg/metric_generator"
 )
@@ -264,6 +267,8 @@ func (c *compiledGauge) Values(v interface{}) (result []eachValue, errs []error)
 				ev.Labels[c.labelFromKey] = key
 			}
 			addPathLabels(it, c.LabelFromPath(), ev.Labels)
+			// Evaluate path from parent's context as well (search w.r.t. the root element, not just specific fields).
+			addPathLabels(v, c.LabelFromPath(), ev.Labels)
 			result = append(result, *ev)
 		}
 	case []interface{}:
@@ -320,17 +325,25 @@ func (c *compiledInfo) Values(v interface{}) (result []eachValue, errs []error) 
 				continue
 			}
 		}
-		// labelFromKey logic
-		for key := range iter {
+
+		// labelFromKey / labelFromPath logic
+		for key, it := range iter {
+			labels := make(map[string]string)
+
 			if key != "" && c.labelFromKey != "" {
+				labels[c.labelFromKey] = key
+			}
+
+			addPathLabels(it, c.LabelFromPath(), labels)
+
+			if len(labels) > 0 {
 				result = append(result, eachValue{
-					Labels: map[string]string{
-						c.labelFromKey: key,
-					},
-					Value: 1,
+					Labels: labels,
+					Value:  1,
 				})
 			}
 		}
+
 		result = append(result, value...)
 	default:
 		result, errs = c.values(v)
@@ -503,7 +516,7 @@ func addPathLabels(obj interface{}, labels map[string]valuePath, result map[stri
 		m := labels[k].Get(obj)
 		if kv, ok := m.(map[string]interface{}); ok {
 			for k, v := range kv {
-				result[k] = fmt.Sprintf("%v", v)
+				result[store.SanitizeLabelName(k)] = fmt.Sprintf("%v", v)
 			}
 		}
 	}
@@ -516,7 +529,7 @@ func addPathLabels(obj interface{}, labels map[string]valuePath, result map[stri
 		if value == nil {
 			continue
 		}
-		result[k] = fmt.Sprintf("%v", value)
+		result[store.SanitizeLabelName(k)] = fmt.Sprintf("%v", value)
 	}
 }
 
@@ -688,6 +701,7 @@ func toFloat64(value interface{}, nilIsZero bool) (float64, error) {
 		}
 		return 0, nil
 	case string:
+		// The string contains a boolean as a string
 		normalized := strings.ToLower(value.(string))
 		if normalized == "true" || normalized == "yes" {
 			return 1, nil
@@ -695,9 +709,20 @@ func toFloat64(value interface{}, nilIsZero bool) (float64, error) {
 		if normalized == "false" || normalized == "no" {
 			return 0, nil
 		}
+		// The string contains a RFC3339 timestamp
 		if t, e := time.Parse(time.RFC3339, value.(string)); e == nil {
 			return float64(t.Unix()), nil
 		}
+		// The string contains a quantity with a suffix like "25m" (milli) or "5Gi" (binarySI)
+		if t, e := resource.ParseQuantity(value.(string)); e == nil {
+			return t.AsApproximateFloat64(), nil
+		}
+		// The string contains a percentage with a suffix "%"
+		if e := validation.IsValidPercent(value.(string)); len(e) == 0 {
+			t, e := strconv.ParseFloat(strings.TrimRight(value.(string), "%"), 64)
+			return t / 100, e
+		}
+
 		return strconv.ParseFloat(value.(string), 64)
 	case byte:
 		v = float64(vv)
