@@ -5,22 +5,21 @@ reviewers:
   - simonpasquier
   - dgrisonnet
   - slashpai
-  - sthaha
   - raptorsun
   - jan--f
-  - JoaoBraveCoding
-  - juanrh
+  - rexagod
+  - machine424
+  - marioferh
 
 approvers:
   - simonpasquier
   - dgrisonnet
   - slashpai
-  - sthaha
   - raptorsun
   - jan--f
-  - JoaoBraveCoding
-  - juanrh
-
+  - rexagod
+  - machine424
+  - marioferh
 
 emeritus_approvers:
   - brancz
@@ -32,3 +31,6 @@ emeritus_approvers:
   - fpetkovski
   - PhilipGough
   - arajkumar
+  - JoaoBraveCoding
+  - sthaha
+  - juanrh
