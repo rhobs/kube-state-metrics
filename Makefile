@@ -21,6 +21,8 @@ IMAGE = $(REGISTRY)/kube-state-metrics
 MULTI_ARCH_IMG = $(IMAGE)-$(ARCH)
 USER ?= $(shell id -u -n)
 HOST ?= $(shell hostname)
+MARKDOWNLINT_CLI2_VERSION = 0.9.2
+
 
 export DOCKER_CLI_EXPERIMENTAL=enabled
 
@@ -41,13 +43,14 @@ licensecheck:
                exit 1; \
        fi
 
-lint: shellcheck licensecheck
+lint: shellcheck licensecheck lint-markdown-format
 	golangci-lint run
 
-lint-fix:
+lint-fix: fix-markdown-format
 	golangci-lint run --fix -v
+	
 
-doccheck: generate
+doccheck: generate validate-template
 	@echo "- Checking if the generated documentation is up to date..."
 	@git diff --exit-code
 	@echo "- Checking if the documentation is in sync with the code..."
@@ -77,6 +80,18 @@ test-rules:
 
 shellcheck:
 	${DOCKER_CLI} run -v "${PWD}:/mnt" koalaman/shellcheck:stable $(shell find . -type f -name "*.sh" -not -path "*vendor*")
+
+lint-markdown-format:
+	${DOCKER_CLI} run -v "${PWD}:/workdir" davidanson/markdownlint-cli2:v${MARKDOWNLINT_CLI2_VERSION} --config .markdownlint-cli2.jsonc
+
+fix-markdown-format:
+	${DOCKER_CLI} run -v "${PWD}:/workdir" davidanson/markdownlint-cli2:v${MARKDOWNLINT_CLI2_VERSION} --fix --config .markdownlint-cli2.jsonc
+
+generate-template:
+	gomplate -d config=./data.yaml --file README.md.tpl > README.md
+
+validate-template: generate-template
+	git diff --no-ext-diff --quiet --exit-code README.md
 
 # Runs benchmark tests on the current git ref and the last release and compares
 # the two.
@@ -120,7 +135,7 @@ clean:
 e2e:
 	./tests/e2e.sh
 
-generate: build-local
+generate: build-local generate-template
 	@echo ">> generating docs"
 	@./scripts/generate-help-text.sh
 	embedmd -w `find . -path ./vendor -prune -o -name "*.md" -print`
@@ -163,4 +178,4 @@ install-promtool:
 	@wget -qO- "https://github.com/prometheus/prometheus/releases/download/v${PROMETHEUS_VERSION}/prometheus-${PROMETHEUS_VERSION}.${OS}-${ARCH}.tar.gz" |\
 	tar xvz --strip-components=1 prometheus-${PROMETHEUS_VERSION}.${OS}-${ARCH}/promtool
 
-.PHONY: all build build-local all-push all-container container container-* do-push-* sub-push-* push push-multi-arch test-unit test-rules test-benchmark-compare clean e2e validate-modules shellcheck licensecheck lint lint-fix generate embedmd
+.PHONY: all build build-local all-push all-container container container-* do-push-* sub-push-* push push-multi-arch test-unit test-rules test-benchmark-compare clean e2e validate-modules shellcheck licensecheck lint lint-fix generate generate-template validate-template embedmd
