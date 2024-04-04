@@ -4,6 +4,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/kubernetes/kube-state-metrics)](https://goreportcard.com/report/github.com/kubernetes/kube-state-metrics)
 [![Go Reference](https://pkg.go.dev/badge/github.com/kubernetes/kube-state-metrics.svg)](https://pkg.go.dev/github.com/kubernetes/kube-state-metrics)
 [![govulncheck](https://github.com/kubernetes/kube-state-metrics/actions/workflows/govulncheck.yml/badge.svg)](https://github.com/kubernetes/kube-state-metrics/actions/workflows/govulncheck.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/kubernetes/kube-state-metrics/badge)](https://api.securityscorecards.dev/projects/github.com/kubernetes/kube-state-metrics)
 
 kube-state-metrics (KSM) is a simple service that listens to the Kubernetes API
 server and generates metrics about the state of the objects. (See examples in
@@ -73,11 +74,11 @@ Generally, it is recommended to use the latest release of kube-state-metrics. If
 
 | kube-state-metrics | Kubernetes client-go Version |
 |--------------------|:----------------------------:|
-| **v2.6.0**         | v1.24                        |
 | **v2.7.0**         | v1.25                        |
 | **v2.8.2**         | v1.26                        |
 | **v2.9.2**         | v1.26                        |
 | **v2.10.1**        | v1.27                        |
+| **v2.11.0**        | v1.28                        |
 | **main**           | v1.28                        |
 
 
@@ -90,8 +91,9 @@ release.
 #### Container Image
 
 The latest container image can be found at:
-* `registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.10.1` (arch: `amd64`, `arm`, `arm64`, `ppc64le` and `s390x`)
-* View all multi-architecture images at [here](https://explore.ggcr.dev/?image=registry.k8s.io%2Fkube-state-metrics%2Fkube-state-metrics:v2.10.1)
+
+* `registry.k8s.io/kube-state-metrics/kube-state-metrics:v2.11.0` (arch: `amd64`, `arm`, `arm64`, `ppc64le` and `s390x`)
+* View all multi-architecture images at [here](https://explore.ggcr.dev/?image=registry.k8s.io%2Fkube-state-metrics%2Fkube-state-metrics:v2.11.0)
 
 ### Metrics Documentation
 
@@ -246,7 +248,8 @@ The downside of using an auto-sharded setup comes from the rollout strategy supp
 ### Daemonset sharding for pod metrics
 
 For pod metrics, they can be sharded per node with the following flag:
-* `--node`
+
+* `--node=$(NODE_NAME)`
 
 Each kube-state-metrics pod uses FieldSelector (spec.nodeName) to watch/list pod metrics only on the same node.
 
@@ -269,6 +272,22 @@ spec:
             fieldRef:
               apiVersion: v1
               fieldPath: spec.nodeName
+```
+
+To track metrics for unassigned pods, you need to add an additional deployment and set `--node=""`, as shown in the following example:
+
+```
+apiVersion: apps/v1
+kind: Deployment
+spec:
+  template:
+    spec:
+      containers:
+      - image: registry.k8s.io/kube-state-metrics/kube-state-metrics:IMAGE_TAG
+        name: kube-state-metrics
+        args:
+        - --resources=pods
+        - --node=""
 ```
 
 Other metrics can be sharded via [Horizontal sharding](#horizontal-sharding).

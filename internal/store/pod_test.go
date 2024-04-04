@@ -33,6 +33,7 @@ func TestPodStore(t *testing.T) {
 	runtimeclass := "foo"
 	startTime := 1501569018
 	metav1StartTime := metav1.Unix(int64(startTime), 0)
+	restartPolicyAlways := v1.ContainerRestartPolicyAlways
 
 	cases := []generateMetricsTestCase{
 		{
@@ -87,8 +88,9 @@ func TestPodStore(t *testing.T) {
 					},
 					InitContainers: []v1.Container{
 						{
-							Name:  "initContainer",
-							Image: "k8s.gcr.io/initfoo_spec",
+							Name:          "initContainer",
+							Image:         "k8s.gcr.io/initfoo_spec",
+							RestartPolicy: &restartPolicyAlways,
 						},
 					},
 				},
@@ -124,7 +126,7 @@ func TestPodStore(t *testing.T) {
 				# TYPE kube_pod_init_container_info gauge
 				kube_pod_container_info{container="container2",container_id="docker://cd456",image_spec="k8s.gcr.io/hyperkube2_spec",image="k8s.gcr.io/hyperkube2",image_id="docker://sha256:bbb",namespace="ns2",pod="pod2",uid="uid2"} 1
 				kube_pod_container_info{container="container3",container_id="docker://ef789",image_spec="k8s.gcr.io/hyperkube3_spec",image="k8s.gcr.io/hyperkube3",image_id="docker://sha256:ccc",namespace="ns2",pod="pod2",uid="uid2"} 1
-				kube_pod_init_container_info{container="initContainer",container_id="docker://ef123",image_spec="k8s.gcr.io/initfoo_spec",image="k8s.gcr.io/initfoo",image_id="docker://sha256:wxyz",namespace="ns2",pod="pod2",uid="uid2"} 1`,
+				kube_pod_init_container_info{container="initContainer",container_id="docker://ef123",image_spec="k8s.gcr.io/initfoo_spec",image="k8s.gcr.io/initfoo",image_id="docker://sha256:wxyz",namespace="ns2",pod="pod2",uid="uid2",restart_policy="Always"} 1`,
 			MetricNames: []string{"kube_pod_container_info", "kube_pod_init_container_info"},
 		},
 		{
@@ -2136,6 +2138,26 @@ func TestPodStore(t *testing.T) {
 				"kube_pod_service_account",
 			},
 		},
+		{
+			Obj: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod1",
+					Namespace: "ns1",
+					UID:       "uid1",
+				},
+				Spec: v1.PodSpec{
+					SchedulerName: "scheduler1",
+				},
+			},
+			Want: `
+				# HELP kube_pod_scheduler The scheduler for a pod.
+				# TYPE kube_pod_scheduler gauge
+				kube_pod_scheduler{namespace="ns1",pod="pod1",name="scheduler1",uid="uid1"} 1
+			`,
+			MetricNames: []string{
+				"kube_pod_scheduler",
+			},
+		},
 	}
 
 	for i, c := range cases {
@@ -2231,7 +2253,7 @@ func BenchmarkPodStore(b *testing.B) {
 		},
 	}
 
-	expectedFamilies := 52
+	expectedFamilies := 53
 	for n := 0; n < b.N; n++ {
 		families := f(pod)
 		if len(families) != expectedFamilies {
