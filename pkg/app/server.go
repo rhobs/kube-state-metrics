@@ -33,6 +33,7 @@ import (
 	"github.com/oklog/run"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
+	versionCollector "github.com/prometheus/client_golang/prometheus/collectors/version"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/version"
@@ -89,7 +90,7 @@ func RunKubeStateMetricsWrapper(ctx context.Context, opts *options.Options) erro
 func RunKubeStateMetrics(ctx context.Context, opts *options.Options) error {
 	promLogger := promLogger{}
 	ksmMetricsRegistry := prometheus.NewRegistry()
-	ksmMetricsRegistry.MustRegister(version.NewCollector("kube_state_metrics"))
+	ksmMetricsRegistry.MustRegister(versionCollector.NewCollector("kube_state_metrics"))
 	durationVec := promauto.With(ksmMetricsRegistry).NewHistogramVec(
 		prometheus.HistogramOpts{
 			Name:        "http_request_duration_seconds",
@@ -250,7 +251,9 @@ func RunKubeStateMetrics(ctx context.Context, opts *options.Options) error {
 	storeBuilder.WithKubeClient(kubeClient)
 
 	storeBuilder.WithSharding(opts.Shard, opts.TotalShards)
-	storeBuilder.WithAllowAnnotations(opts.AnnotationsAllowList)
+	if err := storeBuilder.WithAllowAnnotations(opts.AnnotationsAllowList); err != nil {
+		return fmt.Errorf("failed to set up annotations allowlist: %v", err)
+	}
 	if err := storeBuilder.WithAllowLabels(opts.LabelsAllowList); err != nil {
 		return fmt.Errorf("failed to set up labels allowlist: %v", err)
 	}

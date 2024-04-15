@@ -21,6 +21,8 @@ spec:
 
 ## Available options:
 
+<!-- markdownlint-disable blanks-around-fences -->
+<!-- markdownlint-disable link-image-reference-definitions -->
 [embedmd]:# (../help.txt)
 ```txt
 $ kube-state-metrics -h
@@ -68,7 +70,7 @@ Flags:
       --shard int32                                The instances shard nominal (zero indexed) within the total number of shards. (default 0)
       --skip_headers                               If true, avoid header prefixes in the log messages
       --skip_log_headers                           If true, avoid headers when opening log files (no effect when -logtostderr=true)
-      --stderrthreshold severity                   logs at or above this threshold go to stderr when writing to files and stderr (no effect when -logtostderr=true or -alsologtostderr=false) (default 2)
+      --stderrthreshold severity                   logs at or above this threshold go to stderr when writing to files and stderr (no effect when -logtostderr=true or -alsologtostderr=true) (default 2)
       --telemetry-host string                      Host to expose kube-state-metrics self metrics on. (default "::")
       --telemetry-port int                         Port to expose kube-state-metrics self metrics on. (default 8081)
       --tls-config string                          Path to the TLS configuration file
@@ -79,3 +81,5 @@ Flags:
 
 Use "kube-state-metrics [command] --help" for more information about a command.
 ```
+<!-- markdownlint-enable link-image-reference-definitions -->
+<!-- markdownlint-enable blanks-around-fences -->
